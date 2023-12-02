@@ -1,0 +1,87 @@
+{
+    "name": "@kdt-trading-tools/exchanges",
+    "version": "0.0.0",
+    "description": "A library for help to easy interact with any crypto exchanges",
+    "license": "MIT",
+    "author": "Diep Dang <khangdt310722@gmail.com>",
+    "homepage": "https://github.com/kdt-trading-tools/exchanges",
+    "repository": "github:kdt-trading-tools/exchanges",
+    "bugs": {
+        "email": "khangdt310722@gmail.com",
+        "url": "https://github.com/kdt-trading-tools/exchanges/issues"
+    },
+    "type": "module",
+    "files": [
+        "dist",
+        "src"
+    ],
+    "engines": {
+        "node": ">=16.0.0"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": {
+                "default": "./dist/index.js",
+                "types": "./dist/index.d.ts"
+            },
+            "require": {
+                "default": "./dist/index.cjs",
+                "types": "./dist/index.d.cts"
+            }
+        }
+    },
+    "scripts": {
+        "build": "tsc && tsup",
+        "release": "np --no-yarn --no-release-draft --yolo --message='chore: release v%s'",
+        "up": "ncu -i",
+        "lint": "pnpm prettier '**/*.!(js|jsx|cjs|mjs|ts|tsx|cts|mts|d.ts|vue)' && pnpm eslint .",
+        "eslint": "eslint --ignore-path .gitignore --fix",
+        "prettier": "prettier --ignore-path .gitignore --ignore-unknown --write",
+        "preinstall": "npx only-allow pnpm",
+        "prepare": "simple-git-hooks",
+        "prepublishOnly": "pnpm build"
+    },
+    "dependencies": {
+        "@khangdt22/utils": "latest",
+        "binance": "^2.8.13",
+        "bottleneck": "^2.19.5"
+    },
+    "devDependencies": {
+        "@commitlint/cli": "latest",
+        "@commitlint/config-conventional": "latest",
+        "@khangdt22/eslint-config": "latest",
+        "@khangdt22/prettier-config": "latest",
+        "@swc/core": "latest",
+        "@types/node": "latest",
+        "eslint": "latest",
+        "lint-staged": "latest",
+        "np": "latest",
+        "npm-check-updates": "latest",
+        "only-allow": "latest",
+        "prettier": "latest",
+        "simple-git-hooks": "latest",
+        "ts-node": "latest",
+        "tsup": "latest",
+        "typescript": "latest"
+    },
+    "commitlint": {
+        "extends": "@commitlint/config-conventional"
+    },
+    "eslintConfig": {
+        "extends": "@khangdt22"
+    },
+    "lint-staged": {
+        "*.{js,jsx,cjs,mjs,ts,tsx,cts,mts,vue}": "pnpm eslint",
+        "*.!(js|jsx|cjs|mjs|ts|tsx|cts|mts|d.ts|vue)": "pnpm prettier"
+    },
+    "prettier": "@khangdt22/prettier-config",
+    "simple-git-hooks": {
+        "commit-msg": "npx --no -- commitlint --edit ${1}",
+        "pre-commit": "npx tsc --noEmit && npx lint-staged"
+    }
+}
