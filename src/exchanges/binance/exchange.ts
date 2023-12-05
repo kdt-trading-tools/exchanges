@@ -29,6 +29,10 @@ export abstract class BinanceExchange extends Exchange {
         return this.#websocketClient ??= this.createWebsocketClient()
     }
 
+    public async getTimezone() {
+        return this.getExchangeInfo().then(({ timezone }) => timezone)
+    }
+
     public async getPair(symbol: string) {
         if (!this.pairs[symbol]) {
             await this.getPairs()
