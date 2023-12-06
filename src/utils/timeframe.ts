@@ -14,7 +14,7 @@ export class TimeframeHelper {
     protected readonly timezone: string
     protected readonly weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6
 
-    public constructor(protected readonly sampleData: Record<Timeframe, Candle>, options: TimeframeHelperOptions = {}) {
+    public constructor(protected readonly sampleData: Record<string, Candle>, options: TimeframeHelperOptions = {}) {
         this.lengths = map(sampleData, (timeframe, candle) => [timeframe, candle.closeTime - candle.openTime])
         this.timezone = options.timezone ?? 'UTC'
         this.weekStartsOn = options.weekStartsOn ?? 1
@@ -60,6 +60,14 @@ export class TimeframeHelper {
         }
 
         return openTime + this.lengths[timeframe]
+    }
+
+    public sort(timeframes: Timeframe[]) {
+        const priorities = Object.fromEntries(
+            Object.entries(Timeframe).map(([k], i) => [k, i] as const)
+        )
+
+        return timeframes.sort((a, b) => priorities[a] - priorities[b])
     }
 
     protected getValue(timeframe: Timeframe) {
