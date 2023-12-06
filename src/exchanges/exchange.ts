@@ -35,6 +35,8 @@ export abstract class Exchange extends TypedEventEmitter<ExchangeEvents> {
 
     public abstract getTimezone(): Promise<string>
 
+    public abstract getSymbolForSampleData(): Promise<string>
+
     public abstract getPair(symbol: string): Promise<Pair | undefined>
 
     public abstract getPairs(): Promise<Pair[]>

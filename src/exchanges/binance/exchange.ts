@@ -33,6 +33,10 @@ export abstract class BinanceExchange extends Exchange {
         return this.getExchangeInfo().then(({ timezone }) => timezone)
     }
 
+    public async getSymbolForSampleData() {
+        return this.getPairs().then((pairs) => pairs[0].symbol)
+    }
+
     public async getPair(symbol: string) {
         if (!this.pairs[symbol]) {
             await this.getPairs()
