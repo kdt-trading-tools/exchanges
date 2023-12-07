@@ -9,7 +9,7 @@ export function ensureContinuous(candles: Candle[]) {
         const next = candles[i + 1]
 
         if (next && !isContinuous(candle, next)) {
-            throw new Error(`Candles are not continuous, open time: ${next.openTime}, expected: ${candle.closeTime + 1}`)
+            throw new Error(`Candles are not continuous, current candle open time: ${candle.openTime}, next open time: ${next.openTime}, expected: ${candle.closeTime + 1}`)
         }
     }
 }
