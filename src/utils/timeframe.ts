@@ -1,4 +1,4 @@
-import { endOfMonth, startOfMonth, startOfWeek, startOfDay, differenceInDays } from 'date-fns'
+import { endOfMonth, startOfMonth, startOfWeek, startOfDay, differenceInDays, startOfMinute, toDate, startOfHour } from 'date-fns'
 import { map } from '@khangdt22/utils/object'
 import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz'
 import type { Candle } from '../types'
@@ -21,45 +21,47 @@ export class TimeframeHelper {
     }
 
     public isOpenTime(timeframe: Timeframe, timestamp: number) {
-        const input = utcToZonedTime(timestamp, this.timezone)
+        return this.getOpenTime(timeframe, timestamp) === timestamp
+    }
+
+    public getOpenTime(timeframe: Timeframe, timestamp: number) {
+        const date = toDate(timestamp)
+        const input = utcToZonedTime(date, this.timezone)
 
         switch (timeframe) {
             case Timeframe.MIN1:
+                return this.getOpenTimeInMinutes(date, 1)
             case Timeframe.MIN3:
+                return this.getOpenTimeInMinutes(date, 3)
             case Timeframe.MIN5:
+                return this.getOpenTimeInMinutes(date, 5)
             case Timeframe.MIN15:
+                return this.getOpenTimeInMinutes(date, 15)
             case Timeframe.MIN30:
-                return input.getMinutes() % this.getValue(timeframe) === 0
+                return this.getOpenTimeInMinutes(date, 30)
             case Timeframe.HOUR1:
+                return zonedTimeToUtc(this.getOpenTimeInHours(input, 1), this.timezone).getTime()
             case Timeframe.HOUR2:
+                return zonedTimeToUtc(this.getOpenTimeInHours(input, 2), this.timezone).getTime()
             case Timeframe.HOUR4:
+                return zonedTimeToUtc(this.getOpenTimeInHours(input, 4), this.timezone).getTime()
             case Timeframe.HOUR6:
+                return zonedTimeToUtc(this.getOpenTimeInHours(input, 6), this.timezone).getTime()
             case Timeframe.HOUR8:
+                return zonedTimeToUtc(this.getOpenTimeInHours(input, 8), this.timezone).getTime()
             case Timeframe.HOUR12:
-                return input.getHours() % this.getValue(timeframe) === 0
+                return zonedTimeToUtc(this.getOpenTimeInHours(input, 12), this.timezone).getTime()
             case Timeframe.DAY1:
-                return zonedTimeToUtc(startOfDay(input), this.timezone).getTime() === timestamp
+                return zonedTimeToUtc(startOfDay(input), this.timezone).getTime()
             case Timeframe.DAY3:
-                if (!this.isOpenTime(Timeframe.DAY1, timestamp)) {
-                    return false
-                }
-
-                return Math.abs(differenceInDays(timestamp, this.sampleData[Timeframe.DAY3].openTime)) % 3 === 0
+                return zonedTimeToUtc(this.get3DaysOpenTime(input), this.timezone).getTime()
             case Timeframe.WEEK1:
-                return zonedTimeToUtc(this.startOfWeek(input), this.timezone).getTime() === timestamp
+                return zonedTimeToUtc(this.startOfWeek(input), this.timezone).getTime()
             case Timeframe.MONTH1:
-                return zonedTimeToUtc(startOfMonth(input), this.timezone).getTime() === timestamp
+                return zonedTimeToUtc(startOfMonth(input), this.timezone).getTime()
             default:
                 throw new Error(`Timeframe ${timeframe} is not supported`)
         }
-    }
-
-    public getOpenTime(timeframe: Timeframe, closeTime: number) {
-        if (timeframe === Timeframe.MONTH1) {
-            return zonedTimeToUtc(startOfMonth(utcToZonedTime(closeTime, this.timezone)), this.timezone).getTime()
-        }
-
-        return closeTime - this.lengths[timeframe]
     }
 
     public getCloseTime(timeframe: Timeframe, openTime: number) {
@@ -76,6 +78,34 @@ export class TimeframeHelper {
         )
 
         return timeframes.sort((a, b) => priorities[a] - priorities[b])
+    }
+
+    protected get3DaysOpenTime(input: Date) {
+        const start = startOfDay(input)
+        const diff = Math.abs(differenceInDays(input, this.sampleData[Timeframe.DAY3].openTime))
+        const days = start.getDate()
+
+        start.setDate(days - (diff % 3))
+
+        return start.getTime()
+    }
+
+    protected getOpenTimeInHours(input: Date, value: number) {
+        const time = startOfHour(input)
+        const hours = time.getHours()
+
+        time.setHours(hours - (hours % value))
+
+        return time.getTime()
+    }
+
+    protected getOpenTimeInMinutes(input: Date, value: number) {
+        const time = startOfMinute(input)
+        const minutes = time.getMinutes()
+
+        time.setMinutes(minutes - (minutes % value))
+
+        return time.getTime()
     }
 
     protected getValue(timeframe: Timeframe) {
