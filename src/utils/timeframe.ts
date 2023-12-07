@@ -54,6 +54,14 @@ export class TimeframeHelper {
         }
     }
 
+    public getOpenTime(timeframe: Timeframe, closeTime: number) {
+        if (timeframe === Timeframe.MONTH1) {
+            return zonedTimeToUtc(startOfMonth(utcToZonedTime(closeTime, this.timezone)), this.timezone).getTime()
+        }
+
+        return closeTime - this.lengths[timeframe]
+    }
+
     public getCloseTime(timeframe: Timeframe, openTime: number) {
         if (timeframe === Timeframe.MONTH1) {
             return zonedTimeToUtc(endOfMonth(utcToZonedTime(openTime, this.timezone)), this.timezone).getTime()
