@@ -15,6 +15,7 @@ export interface CandleAggregateOptions {
     getCandlesFn?: GetCandlesFn
     handlePairUpdate?: boolean
     initConcurrency?: number
+    emitFrom?: Record<string, Record<string, number>>
 }
 
 export type CandleAggregateEvents = {
@@ -39,6 +40,7 @@ export class CandleAggregate extends TypedEventEmitter<CandleAggregateEvents> {
     protected readonly initQueue: PQueue
     protected readonly queues: Record<string, PQueue> = {}
     protected readonly contexts: Record<string, SymbolContext> = {}
+    protected readonly emitFrom: Record<string, Record<string, number>>
 
     #timeframeHelper?: TimeframeHelper
     #lowestTimeframe!: Timeframe
@@ -52,6 +54,7 @@ export class CandleAggregate extends TypedEventEmitter<CandleAggregateEvents> {
         this.getCandlesFn = options.getCandlesFn ?? ((e, s, t, o) => e.getCandles(s, t, o))
         this.handlePairUpdate = options.handlePairUpdate ?? true
         this.initQueue = new PQueue({ concurrency: options.initConcurrency ?? 10 })
+        this.emitFrom = options.emitFrom ?? {}
     }
 
     protected get timeframeHelper() {
@@ -153,11 +156,11 @@ export class CandleAggregate extends TypedEventEmitter<CandleAggregateEvents> {
     }
 
     protected emitCandle(symbol: string, timeframe: Timeframe, candle: Candle, isClose: boolean) {
-        if (!this.contexts[symbol].initialized) {
-            return
-        }
+        const emitFrom = this.emitFrom[symbol]?.[timeframe]
 
-        this.emit('candle', symbol, timeframe, candle, isClose)
+        if ((emitFrom || this.contexts[symbol].initialized) && candle.openTime >= (emitFrom ?? 0)) {
+            this.emit('candle', symbol, timeframe, candle, isClose)
+        }
     }
 
     protected async initPair(pair: Pair, candle: Candle, total: number) {
