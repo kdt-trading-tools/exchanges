@@ -18,6 +18,10 @@ export interface CandleAggregateOptions {
 }
 
 export type CandleAggregateEvents = {
+    'init': () => void
+    'initialized': () => void
+    'symbol-init': (symbol: string) => void
+    'symbol-initialized': (symbol: string) => void
     'candle': (symbol: string, timeframe: Timeframe, candle: Candle, isClose: boolean) => void
 }
 
@@ -59,6 +63,8 @@ export class CandleAggregate extends TypedEventEmitter<CandleAggregateEvents> {
     }
 
     public async start() {
+        this.emit('init')
+
         this.#timeframeHelper = await this.createTimeframeHelper()
         this.#lowestTimeframe = this.timeframeHelper.sort(this.timeframes)[0]
 
@@ -84,7 +90,7 @@ export class CandleAggregate extends TypedEventEmitter<CandleAggregateEvents> {
 
                 this.queues[symbol] = new PQueue({ autoStart: false, concurrency: 1 })
 
-                this.initQueue.add(async () => this.initPair(pair, candle)).catch((error) => {
+                this.initQueue.add(async () => this.initPair(pair, candle, symbols.length)).catch((error) => {
                     throw error
                 })
             }
@@ -154,7 +160,9 @@ export class CandleAggregate extends TypedEventEmitter<CandleAggregateEvents> {
         this.emit('candle', symbol, timeframe, candle, isClose)
     }
 
-    protected async initPair(pair: Pair, candle: Candle) {
+    protected async initPair(pair: Pair, candle: Candle, total: number) {
+        this.emit('symbol-init', pair.symbol)
+
         const symbol = pair.symbol
         const until = candle.openTime - 1
         const openTimes = this.timeframes.map((t) => this.timeframeHelper.getOpenTime(t, until))
@@ -167,6 +175,13 @@ export class CandleAggregate extends TypedEventEmitter<CandleAggregateEvents> {
 
         this.queues[symbol].start()
         this.contexts[symbol].initialized = true
+        this.emit('symbol-initialized', symbol)
+
+        const contexts = Object.values(this.contexts)
+
+        if (contexts.length >= total && contexts.every((c) => c.initialized)) {
+            this.emit('initialized')
+        }
     }
 
     protected async onPairUpdate({ symbol, isActive }: Pair) {
