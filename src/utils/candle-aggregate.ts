@@ -99,6 +99,7 @@ export class CandleAggregate extends TypedEventEmitter<CandleAggregateEvents> {
         if (this.handlePairUpdate) {
             this.exchange.on('pair-added', this.onNewPair.bind(this))
             this.exchange.on('pair-update', this.onPairUpdate.bind(this))
+            this.exchange.on('pair-removed', this.onPairUpdate.bind(this))
 
             await this.exchange.watchPairs()
         }

@@ -133,10 +133,16 @@ export abstract class BinanceExchange extends Exchange {
         this.pairs = {}
         this.pairsPromise = undefined
 
+        const newPair = await this.getPair(symbol)
+
         if (pair) {
-            this.emit('pair-update', await this.getPair(symbol))
+            if (newPair) {
+                this.emit('pair-update', newPair)
+            } else {
+                this.emit('pair-removed', { ...pair, isActive: false })
+            }
         } else {
-            this.emit('pair-added', await this.getPair(symbol))
+            this.emit('pair-added', newPair)
         }
     }
 

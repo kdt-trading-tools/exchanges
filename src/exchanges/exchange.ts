@@ -7,6 +7,7 @@ export type ExchangeEvents = {
     'candle': (symbol: string, timeframe: Timeframe, candle: Candle, isClose: boolean) => void
     'pair-added': (pair: Pair) => void
     'pair-update': (pair: Pair) => void
+    'pair-removed': (pair: Pair) => void
     'rate-limit-exceeded': LimiterEvents['rate-limit-exceeded']
 }
 
