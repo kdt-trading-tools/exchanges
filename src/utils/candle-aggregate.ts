@@ -16,6 +16,7 @@ export interface CandleAggregateOptions {
     handlePairUpdate?: boolean
     initConcurrency?: number
     emitFrom?: Record<string, Record<string, number>>
+    timeframeHelper?: TimeframeHelper
 }
 
 export type CandleAggregateEvents = {
@@ -46,7 +47,7 @@ export class CandleAggregate extends TypedEventEmitter<CandleAggregateEvents> {
     #lowestTimeframe!: Timeframe
     #pairs!: Record<string, Pair>
 
-    public constructor(public readonly exchange: Exchange, options: CandleAggregateOptions = {}) {
+    public constructor(public readonly exchange: Exchange, protected readonly options: CandleAggregateOptions = {}) {
         super()
 
         this.symbols = options.symbols
@@ -68,7 +69,7 @@ export class CandleAggregate extends TypedEventEmitter<CandleAggregateEvents> {
     public async start() {
         this.emit('init')
 
-        this.#timeframeHelper = await this.createTimeframeHelper()
+        this.#timeframeHelper = this.options.timeframeHelper ?? await this.createTimeframeHelper()
         this.#lowestTimeframe = this.timeframeHelper.sort(this.timeframes)[0]
 
         const symbols = this.symbols ?? await this.exchange.getActivePairs().then((ps) => ps.map((p) => p.symbol)) ?? []
@@ -114,6 +115,19 @@ export class CandleAggregate extends TypedEventEmitter<CandleAggregateEvents> {
         }
 
         await this.exchange.watchCandlesBatch(watchParams)
+    }
+
+    public async createTimeframeHelper() {
+        const [timezone, symbol] = await Promise.all([
+            this.exchange.getTimezone(),
+            this.exchange.getSymbolForSampleData(),
+        ])
+
+        const candles = await Promise.all(
+            this.timeframes.map(async (t) => [t, (await this.getCandles(symbol, t, { limit: 1 }))[0]] as const)
+        )
+
+        return new TimeframeHelper(Object.fromEntries(candles), { timezone })
     }
 
     protected aggregate({ symbol, precision }: Pair, candle: Candle, isClose: boolean) {
@@ -205,19 +219,6 @@ export class CandleAggregate extends TypedEventEmitter<CandleAggregateEvents> {
         if (isActive) {
             await this.exchange.watchCandles(symbol, this.#lowestTimeframe)
         }
-    }
-
-    protected async createTimeframeHelper() {
-        const [timezone, symbol] = await Promise.all([
-            this.exchange.getTimezone(),
-            this.exchange.getSymbolForSampleData(),
-        ])
-
-        const candles = await Promise.all(
-            this.timeframes.map(async (t) => [t, (await this.getCandles(symbol, t, { limit: 1 }))[0]] as const)
-        )
-
-        return new TimeframeHelper(Object.fromEntries(candles), { timezone })
     }
 
     protected async getCandles(symbol: string, timeframe: Timeframe, options?: GetCandlesOptions) {
