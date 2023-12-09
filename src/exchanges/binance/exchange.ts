@@ -220,9 +220,9 @@ export abstract class BinanceExchange extends Exchange {
         client.on('reconnected', (id) => this.logger.debug(`Reconnected to websocket server ${id}`))
         client.on('disconnect', (id) => this.logger.debug(`Disconnecting from websocket server ${id}`))
         client.on('disconnected', (id) => this.logger.debug(`Disconnected from websocket server ${id}`))
-        client.on('close', (id, _, code, reason) => this.logger.debug(`Connection to websocket server ${id} closed: (${code ?? 'NONE'}) ${reason?.length ? reason : 'Unknown reason'}`))
-        client.on('subscribe', (streams, id) => this.logger.debug(`Subscribing to ${streams.length} streams on websocket server ${id}`, streams))
-        client.on('subscribed', (streams, id) => this.logger.debug(`Subscribed to ${streams.length} streams on websocket server ${id}`))
+        client.on('close', (id, _, code, reason) => this.logger.warn(`Connection to websocket server ${id} closed: (${code ?? 'NONE'}) ${reason?.length ? reason : 'Unknown reason'}`))
+        client.on('subscribe', (streams, id) => this.logger.trace(`Subscribing to ${streams.length} streams on websocket server ${id}`, streams))
+        client.on('subscribed', (streams, id) => this.logger.trace(`Subscribed to ${streams.length} streams on websocket server ${id}`))
         client.on('stream-data', (_, data) => this.onWebsocketMessage(data))
 
         return client
