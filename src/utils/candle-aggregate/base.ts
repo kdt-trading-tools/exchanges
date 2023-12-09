@@ -86,6 +86,10 @@ export abstract class CandleAggregateBase<TEvents extends Record<string, Fn> = a
     }
 
     protected async getCandles(symbol: string, timeframe: Timeframe, since: number, until: number, checkSince = true) {
+        if (until <= since) {
+            return []
+        }
+
         const candles = await this.fetcher(this.exchange, symbol, timeframe, { since, until })
 
         if (this.validate) {

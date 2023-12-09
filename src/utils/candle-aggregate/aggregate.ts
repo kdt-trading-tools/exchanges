@@ -9,10 +9,16 @@ import { isContinuous, createCandle } from '../candles'
 import { round } from '../number'
 import { CandleAggregateBase, type CandleAggregateBaseOptions } from './base'
 
+export interface KnownOpenCandles {
+    candles: Record<string, Candle>
+    until: number
+}
+
 export interface CandleAggregateOptions extends CandleAggregateBaseOptions {
     handlePairUpdate?: boolean
     initConcurrency?: number
     emitFrom?: Record<string, Record<string, number>>
+    knownOpenCandles?: Record<string, KnownOpenCandles | undefined>
 }
 
 export type CandleAggregateEvents = {
@@ -24,7 +30,8 @@ export type CandleAggregateEvents = {
     'stopped': () => void
     'pair-init': (pair: Pair, untilCandle: Candle, order: number) => void
     'pair-initialized': (pair: Pair, order: number) => void
-    'candle': (symbol: string, timeframe: Timeframe, candle: Candle, isClose: boolean) => void
+    'aggregated': (pair: Pair, until: number, openCandles: Record<string, Candle>) => void
+    'candle': (pair: Pair, timeframe: Timeframe, candle: Candle, isClose: boolean) => void
 }
 
 export interface SymbolContext {
@@ -42,7 +49,8 @@ export class CandleAggregate extends CandleAggregateBase<CandleAggregateEvents> 
     protected readonly contexts: Record<string, SymbolContext> = {}
     protected readonly queues: Record<string, PQueue> = {}
     protected readonly initQueue: PQueue
-    protected readonly emitFrom: Record<string, Record<string, number>>
+    protected readonly emitFrom: Record<string, Record<string, number | undefined> | undefined>
+    protected readonly knownOpenCandles: Record<string, KnownOpenCandles | undefined>
 
     protected initOrder = 0
 
@@ -56,6 +64,7 @@ export class CandleAggregate extends CandleAggregateBase<CandleAggregateEvents> 
         this.handlePairUpdate = options.handlePairUpdate ?? true
         this.initQueue = new PQueue({ concurrency: options.initConcurrency ?? 1 })
         this.emitFrom = options.emitFrom ?? {}
+        this.knownOpenCandles = options.knownOpenCandles ?? {}
     }
 
     public get timeframeHelper() {
@@ -119,7 +128,8 @@ export class CandleAggregate extends CandleAggregateBase<CandleAggregateEvents> 
         }
     }
 
-    protected aggregate({ symbol, precision }: Pair, candle: Candle, isClose: boolean, firstCandle?: Candle) {
+    protected aggregate(pair: Pair, candle: Candle, isClose: boolean, firstCandle?: Candle) {
+        const { symbol, precision } = pair
         const context = this.contexts[symbol]
         const lastCloseCandle = context.lastCloseCandle
 
@@ -128,15 +138,27 @@ export class CandleAggregate extends CandleAggregateBase<CandleAggregateEvents> 
         }
 
         for (const timeframe of this.timeframes) {
+            if (timeframe === this.lowestTimeframe) {
+                this.emitCandle(pair, timeframe, candle, isClose)
+
+                continue
+            }
+
+            const knownOpenCandle = this.knownOpenCandles[symbol]?.candles[timeframe]
             const openTime = this.timeframeHelper.getOpenTime(timeframe, candle.openTime)
             const closeTime = this.timeframeHelper.getCloseTime(timeframe, openTime)
+            const currentOpenCandle = this.contexts[symbol].openCandles[timeframe]
 
-            if (openTime === candle.openTime || candle.openTime === firstCandle?.openTime) {
-                this.contexts[symbol].openCandles[timeframe] = createCandle(openTime, closeTime, candle.open)
+            if (knownOpenCandle && !currentOpenCandle) {
+                this.contexts[symbol].openCandles[timeframe] = knownOpenCandle
+            } else {
+                if (openTime === candle.openTime || candle.openTime === firstCandle?.openTime) {
+                    this.contexts[symbol].openCandles[timeframe] = createCandle(openTime, closeTime, candle.open)
+                }
             }
 
             if (!this.contexts[symbol].openCandles[timeframe]) {
-                continue
+                throw new Error(`Missing open candle for symbol ${symbol} (timeframe: ${timeframe}), current candle open time: ${candle.openTime}, missing: ${openTime}}`)
             }
 
             const openCandle = { ...this.contexts[symbol].openCandles[timeframe] }
@@ -150,12 +172,13 @@ export class CandleAggregate extends CandleAggregateBase<CandleAggregateEvents> 
                 openCandle.volume = volume
             }
 
-            this.emitCandle(symbol, timeframe, { ...openCandle, volume }, isClose && closeTime === candle.closeTime)
+            this.emitCandle(pair, timeframe, { ...openCandle, volume }, isClose && closeTime === candle.closeTime)
             this.contexts[symbol].openCandles[timeframe] = openCandle
         }
 
         if (isClose) {
             this.contexts[symbol].lastCloseCandle = candle
+            this.emit('aggregated', pair, candle.closeTime, this.contexts[symbol].openCandles)
         }
     }
 
@@ -166,7 +189,7 @@ export class CandleAggregate extends CandleAggregateBase<CandleAggregateEvents> 
 
         const until = untilCandle.openTime - 1
         const openTimes = this.timeframes.map((t) => this.timeframeHelper.getOpenTime(t, until))
-        const since = Math.min(...openTimes)
+        const since = Math.max(Math.min(...openTimes), (this.knownOpenCandles[pair.symbol]?.until ?? 0) + 1)
         const candles = await this.getCandles(pair.symbol, this.lowestTimeframe, since, until, false)
 
         for (const candle of candles) {
@@ -220,11 +243,12 @@ export class CandleAggregate extends CandleAggregateBase<CandleAggregateEvents> 
         delete this.contexts[pair.symbol]
     }
 
-    protected emitCandle(symbol: string, timeframe: Timeframe, candle: Candle, isClose: boolean) {
+    protected emitCandle(pair: Pair, timeframe: Timeframe, candle: Candle, isClose: boolean) {
+        const symbol = pair.symbol
         const emitFrom = this.emitFrom[symbol]?.[timeframe]
 
         if ((emitFrom || this.contexts[symbol].initialized) && candle.openTime >= (emitFrom ?? 0)) {
-            this.emit('candle', symbol, timeframe, candle, isClose)
+            this.emit('candle', pair, timeframe, candle, isClose)
         }
     }
 }
