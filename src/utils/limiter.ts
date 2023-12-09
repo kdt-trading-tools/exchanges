@@ -37,24 +37,30 @@ export class Limiter extends TypedEventEmitter<LimiterEvents> {
     }
 
     public async call<T>(weight: number, fn: () => Promise<T>): Promise<T> {
+        return this.limiter.schedule({ weight }, async () => await this.execute(weight, fn))
+    }
+
+    protected async execute<T>(weight: number, fn: () => Promise<T>): Promise<T> {
         if (this.waitUntil) {
             await sleep(Math.max(0, this.waitUntil - Date.now()))
         }
 
-        return this.limiter.schedule({ weight }, async () => fn().catch((error) => this.handleError(fn, error)))
-    }
+        try {
+            return fn()
+        } catch (error) {
+            if (this.isRateLimitError(error)) {
+                const waitTime = this.getWaitTime(error)
 
-    protected async handleError<T>(fn: () => Promise<T>, error: any) {
-        if (this.isRateLimitError(error)) {
-            const waitTime = this.getWaitTime(error)
+                this.emit('rate-limit-exceeded', this.waitUntil = Date.now() + waitTime, waitTime)
 
-            this.emit('rate-limit-exceeded', this.waitUntil = Date.now() + waitTime, waitTime)
+                await sleep(waitTime).then(async () => (
+                    this.waitUntil = undefined
+                ))
 
-            return sleep(waitTime).then(async () => (
-                this.waitUntil = undefined, await fn()
-            ))
+                return this.call(weight, fn)
+            }
+
+            throw error
         }
-
-        throw error
     }
 }
