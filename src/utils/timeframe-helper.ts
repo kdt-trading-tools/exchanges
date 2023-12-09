@@ -3,6 +3,7 @@ import { map } from '@khangdt22/utils/object'
 import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz'
 import type { Candle } from '../types'
 import { Timeframe } from '../constants'
+import { sortTimeframes } from './timeframes'
 
 export interface TimeframeHelperOptions {
     timezone?: string
@@ -73,11 +74,7 @@ export class TimeframeHelper {
     }
 
     public sort(timeframes: Timeframe[]) {
-        const priorities = Object.fromEntries(
-            Object.entries(Timeframe).map(([k], i) => [k, i] as const)
-        )
-
-        return timeframes.sort((a, b) => priorities[a] - priorities[b])
+        return sortTimeframes(timeframes)
     }
 
     protected get3DaysOpenTime(input: Date) {

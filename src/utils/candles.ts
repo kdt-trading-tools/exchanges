@@ -1,4 +1,8 @@
+import { last } from '@khangdt22/utils/array'
+import { isNullish } from '@khangdt22/utils/condition'
 import type { Candle } from '../types'
+import type { Exchange, GetCandlesOptions } from '../exchanges'
+import type { Timeframe } from '../constants'
 
 export function isContinuous(current: Candle, next: Candle) {
     return current.closeTime + 1 === next.openTime
@@ -16,4 +20,51 @@ export function ensureContinuous(candles: Candle[]) {
             throw new Error(`Candles are not continuous, current candle open time: ${candle.openTime}, next open time: ${next.openTime}, expected: ${candle.closeTime + 1}`)
         }
     }
+}
+
+export function validateCandles(candles: Candle[], since?: number, until?: number) {
+    if (candles.length === 0) {
+        return
+    }
+
+    ensureContinuous(candles)
+
+    if (!isNullish(since) && candles[0].openTime !== since) {
+        throw new Error(`Invalid first candle open time, expected: ${since}, actual: ${candles[0].openTime}`)
+    }
+
+    const lastCandle = last(candles)
+
+    if (!isNullish(until) && lastCandle.closeTime !== until) {
+        throw new Error(`Invalid last candle close time, expected: ${until}, actual: ${lastCandle.closeTime}`)
+    }
+}
+
+export interface FetchCandlesOptions extends GetCandlesOptions {
+    onStart?: (e: Exchange, symbol: string, timeframe: Timeframe, options?: FetchCandlesOptions) => void
+    onEnd?: (candles: Candle[], e: Exchange, symbol: string, timeframe: Timeframe, o?: FetchCandlesOptions) => void
+}
+
+export async function fetchCandles(e: Exchange, symbol: string, timeframe: Timeframe, options?: FetchCandlesOptions) {
+    options?.onStart?.(e, symbol, timeframe, options)
+
+    const candles = await e.getCandles(symbol, timeframe, options)
+
+    if (candles.length === 0) {
+        return candles
+    }
+
+    const lastCandle = last(candles)
+    const until = options?.until
+
+    if (!isNullish(until) && lastCandle.closeTime < until) {
+        const nextOptions = { ...options, since: lastCandle.closeTime + 1 }
+        const nextCandles = await fetchCandles(e, symbol, timeframe, nextOptions)
+
+        candles.push(...nextCandles)
+    }
+
+    options?.onEnd?.(candles, e, symbol, timeframe, options)
+
+    return candles
 }
