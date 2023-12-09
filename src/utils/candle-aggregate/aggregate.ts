@@ -128,7 +128,7 @@ export class CandleAggregate extends CandleAggregateBase<CandleAggregateEvents> 
         }
     }
 
-    protected aggregate(pair: Pair, candle: Candle, isClose: boolean, firstCandle?: Candle) {
+    protected aggregate(pair: Pair, candle: Candle, isClose: boolean, from: number, firstCandle?: Candle) {
         const { symbol, precision } = pair
         const context = this.contexts[symbol]
         const lastCloseCandle = context.lastCloseCandle
@@ -144,8 +144,13 @@ export class CandleAggregate extends CandleAggregateBase<CandleAggregateEvents> 
                 continue
             }
 
-            const knownOpenCandle = this.knownOpenCandles[symbol]?.candles[timeframe]
             const openTime = this.timeframeHelper.getOpenTime(timeframe, candle.openTime)
+
+            if (openTime < from) {
+                continue
+            }
+
+            const knownOpenCandle = this.knownOpenCandles[symbol]?.candles[timeframe]
             const closeTime = this.timeframeHelper.getCloseTime(timeframe, openTime)
             const currentOpenCandle = this.contexts[symbol].openCandles[timeframe]
 
@@ -191,9 +196,10 @@ export class CandleAggregate extends CandleAggregateBase<CandleAggregateEvents> 
         const openTimes = this.timeframes.map((t) => this.timeframeHelper.getOpenTime(t, until))
         const since = Math.max(Math.min(...openTimes), (this.knownOpenCandles[pair.symbol]?.until ?? 0) + 1)
         const candles = await this.getCandles(pair.symbol, this.lowestTimeframe, since, until, false)
+        const firstCandle = candles.length > 0 && candles[0].openTime > since ? candles[0] : undefined
 
         for (const candle of candles) {
-            this.aggregate(pair, candle, true, candles[0].openTime > since ? candles[0] : undefined)
+            this.aggregate(pair, candle, true, candles[0].openTime, firstCandle)
         }
 
         this.queues[pair.symbol].start()
@@ -216,7 +222,7 @@ export class CandleAggregate extends CandleAggregateBase<CandleAggregateEvents> 
         }
 
         if (this.contexts[symbol].initialized || isClose) {
-            this.queues[symbol].add(() => this.aggregate(pair, candle, isClose), { priority: -candle.openTime })
+            this.queues[symbol].add(() => this.aggregate(pair, candle, isClose, 0), { priority: -candle.openTime })
         }
     }
 
