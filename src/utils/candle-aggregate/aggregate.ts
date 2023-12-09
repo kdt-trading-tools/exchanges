@@ -66,6 +66,14 @@ export class CandleAggregate extends CandleAggregateBase<CandleAggregateEvents> 
         return this.getValue(this.#pairs)
     }
 
+    public get totalPairs() {
+        return Object.keys(this.pairs).length
+    }
+
+    public get totalEntries() {
+        return this.totalPairs * this.timeframes.length
+    }
+
     public async init() {
         this.#initializing = createDeferred<void>()
 
