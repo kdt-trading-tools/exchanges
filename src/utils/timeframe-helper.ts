@@ -79,7 +79,8 @@ export class TimeframeHelper {
 
     protected get3DaysOpenTime(input: Date) {
         const start = startOfDay(input)
-        const diff = Math.abs(differenceInDays(input, this.sampleData[Timeframe.DAY3].openTime))
+        const sample = utcToZonedTime(this.sampleData[Timeframe.DAY3].openTime, this.timezone)
+        const diff = Math.abs(differenceInDays(start, sample))
         const days = start.getDate()
 
         start.setDate(days - (diff % 3))
