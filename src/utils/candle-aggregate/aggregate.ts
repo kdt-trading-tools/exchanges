@@ -146,7 +146,7 @@ export class CandleAggregate extends CandleAggregateBase<CandleAggregateEvents> 
 
             const openTime = this.timeframeHelper.getOpenTime(timeframe, candle.openTime)
 
-            if (openTime < from) {
+            if (!firstCandle && openTime < from) {
                 continue
             }
 
