@@ -111,7 +111,7 @@ export class CandleAggregate extends CandleAggregateBase<CandleAggregateEvents> 
         }
     }
 
-    protected aggregate({ symbol, precision }: Pair, candle: Candle, isClose: boolean) {
+    protected aggregate({ symbol, precision }: Pair, candle: Candle, isClose: boolean, firstCandle?: Candle) {
         const context = this.contexts[symbol]
         const lastCloseCandle = context.lastCloseCandle
 
@@ -123,7 +123,7 @@ export class CandleAggregate extends CandleAggregateBase<CandleAggregateEvents> 
             const openTime = this.timeframeHelper.getOpenTime(timeframe, candle.openTime)
             const closeTime = this.timeframeHelper.getCloseTime(timeframe, openTime)
 
-            if (openTime === candle.openTime) {
+            if (openTime === candle.openTime || candle.openTime === firstCandle?.openTime) {
                 this.contexts[symbol].openCandles[timeframe] = createCandle(openTime, closeTime, candle.open)
             }
 
@@ -162,7 +162,7 @@ export class CandleAggregate extends CandleAggregateBase<CandleAggregateEvents> 
         const candles = await this.getCandles(pair.symbol, this.lowestTimeframe, since, until, false)
 
         for (const candle of candles) {
-            this.aggregate(pair, candle, true)
+            this.aggregate(pair, candle, true, candles[0].openTime > since ? candles[0] : undefined)
         }
 
         this.queues[pair.symbol].start()
