@@ -25,6 +25,17 @@ export class TimeframeHelper {
         return this.getOpenTime(timeframe, timestamp) === timestamp
     }
 
+    public getLowestOpenTime(timeframes: Timeframe[], timestamp: number) {
+        return Math.min(...timeframes.map((timeframe) => this.getOpenTime(timeframe, timestamp)))
+    }
+
+    public getCandleTimes(timeframe: Timeframe, timestamp: number) {
+        const openTime = this.getOpenTime(timeframe, timestamp)
+        const closeTime = this.getCloseTime(timeframe, openTime)
+
+        return { openTime, closeTime }
+    }
+
     public getOpenTime(timeframe: Timeframe, timestamp: number) {
         const date = toDate(timestamp)
 
