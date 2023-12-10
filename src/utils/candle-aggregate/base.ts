@@ -1,113 +1,214 @@
-import { chunk } from '@khangdt22/utils/array'
-import { isNullish } from '@khangdt22/utils/condition'
 import { TypedEventEmitter } from '@khangdt22/utils/event'
+import { createDeferred } from '@khangdt22/utils/promise'
 import type { Fn } from '@khangdt22/utils/function'
-import type { Nullable } from '@khangdt22/utils/types'
-import type { Exchange, GetCandlesOptions } from '../../exchanges'
-import type { Candle, Pair } from '../../types'
-import { Timeframe } from '../../constants'
-import { validateCandles, fetchCandles } from '../candles'
-import { TimeframeHelper } from '../timeframe-helper'
-import { sortTimeframes } from '../timeframes'
+import PQueue from 'p-queue'
+import type { Exchange } from '../../exchanges'
+import type { Timeframe } from '../../constants'
+import type { Pair, Candle } from '../../types'
+import type { TimeframeHelper } from '../timeframe-helper'
+import type { CandleAggregateHelperOptions } from './helper'
+import { CandleAggregateHelper } from './helper'
+import { CandleAggregateStore } from './store'
 
-export type CandlesFetcher = (e: Exchange, s: string, t: Timeframe, o?: GetCandlesOptions) => Promise<Candle[]>
-
-export interface CandleAggregateBaseOptions {
-    pairs?: Array<string | Pair>
-    timeframes?: Timeframe[]
-    fetcher?: CandlesFetcher
-    validate?: boolean
-    concurrency?: number
+export type CandleAggregateEvents = {
+    'init': () => void
+    'initialized': () => void
+    'start': () => void
+    'started': () => void
+    'stop': () => void
+    'stopped': () => void
+    'pair-init': (pair: Pair, untilCandle: Candle) => void
+    'pair-initialized': (pair: Pair) => void
+    'candle': (pair: Pair, timeframe: Timeframe, candle: Candle, isClose: boolean) => void
+    'aggregated': (pair: Pair, candle: Candle, aggregatedCandles: Record<string, Candle>) => void
 }
 
-export abstract class CandleAggregateBase<TEvents extends Record<string, Fn> = any> extends TypedEventEmitter<TEvents> {
+export interface CandleAggregateBaseOptions extends CandleAggregateHelperOptions {
+    handlePairUpdate?: boolean
+    unwatchOnPairDisabled?: boolean
+    autoAddNewPairs?: boolean
+    initConcurrency?: number
+    emitFrom?: Record<string, Record<string, number | undefined> | undefined>
+}
+
+export abstract class BaseCandleAggregate extends TypedEventEmitter<CandleAggregateEvents> {
+    public readonly helper: CandleAggregateHelper
+    public readonly store: CandleAggregateStore
+    public readonly timeframes: Timeframe[]
     public readonly lowestTimeframe: Timeframe
 
-    protected readonly inputPairs?: Array<string | Pair>
-    protected readonly timeframes: Timeframe[]
-    protected readonly fetcher: CandlesFetcher
-    protected readonly validate: boolean
-    protected readonly concurrency: number
+    protected readonly handlePairUpdate: boolean
+    protected readonly unwatchOnPairDisabled: boolean
+    protected readonly autoAddNewPairs: boolean
+
+    protected readonly stopFns: Fn[] = []
+    protected readonly initQueue: PQueue
+    protected readonly emitFrom: Record<string, Record<string, number | undefined> | undefined>
+
+    protected isStarted = false
+    protected isStopping = false
+    protected lastReceivedOpenTimes: Record<string, number> = {}
+
+    #pairs: Record<string, Pair> = {}
+    #timeframeHelper?: TimeframeHelper
+    #initializing?: ReturnType<typeof createDeferred<void>>
 
     protected constructor(public readonly exchange: Exchange, options: CandleAggregateBaseOptions = {}) {
         super()
 
-        this.inputPairs = options.pairs
-        this.timeframes = options.timeframes ?? Object.values(Timeframe)
-        this.fetcher = options.fetcher ?? fetchCandles
-        this.validate = options.validate ?? true
-        this.concurrency = options.concurrency ?? 10
-        this.lowestTimeframe = sortTimeframes(this.timeframes)[0]
+        this.helper = new CandleAggregateHelper(exchange, options)
+        this.store = new CandleAggregateStore()
+
+        this.timeframes = this.helper.timeframes
+        this.lowestTimeframe = this.helper.lowestTimeframe
+
+        this.emitFrom = options.emitFrom ?? {}
+        this.initQueue = new PQueue({ concurrency: options.initConcurrency ?? 1 })
+
+        this.handlePairUpdate = options.handlePairUpdate ?? true
+        this.unwatchOnPairDisabled = options.unwatchOnPairDisabled ?? true
+        this.autoAddNewPairs = options.autoAddNewPairs ?? true
     }
 
-    protected async getPairs() {
-        const pairsChunks = chunk(this.inputPairs ?? await this.exchange.getActivePairs(), this.concurrency)
-        const result: Pair[] = []
+    public get isReady() {
+        return this.isStarted && !this.isStopping
+    }
 
-        for (const pairs of pairsChunks) {
-            result.push(...await Promise.all(pairs.map((pair) => this.getPair(pair))))
+    public get pairs() {
+        return Object.values(this.helper.getPropertyValue(this.#pairs))
+    }
+
+    public get timeframeHelper() {
+        return this.helper.getPropertyValue(this.#timeframeHelper)
+    }
+
+    public get totalItems() {
+        return this.pairs.length * this.timeframes.length
+    }
+
+    public async init() {
+        this.emit('init')
+
+        this.#initializing = createDeferred<void>()
+        this.#pairs = await this.helper.getPairs().then((pairs) => Object.fromEntries(pairs.map((i) => [i.symbol, i])))
+        this.#timeframeHelper = await this.helper.createTimeframeHelper()
+
+        this.exchange.on('candle', this.onCandle.bind(this))
+
+        if (this.handlePairUpdate) {
+            this.exchange.on('pair-added', this.onNewPair.bind(this))
+            this.exchange.on('pair-update', this.onPairUpdate.bind(this))
+            this.exchange.on('pair-removed', this.onPairUpdate.bind(this))
         }
 
-        return result
+        this.emit('initialized')
+        this.#initializing.resolve()
     }
 
-    protected async getPair(symbol: string | Pair) {
-        if (typeof symbol === 'string') {
-            const pair = await this.exchange.getPair(symbol)
-
-            if (isNullish(pair)) {
-                throw new Error(`Pair ${symbol} is not supported`)
-            }
-
-            return pair
+    public async start() {
+        if (this.isStarted || this.isStopping) {
+            return async () => this.stop()
         }
 
-        return symbol
-    }
+        await (this.#initializing ?? this.init())
 
-    protected async createTimeframeHelper() {
         const exchange = this.exchange
-        const [timezone, symbol] = await Promise.all([exchange.getTimezone(), exchange.getSymbolForSampleData()])
-        const sampleData: Record<string, Candle> = {}
+        const lowestTimeframe = this.lowestTimeframe
 
-        for (const timeframes of chunk(this.timeframes, this.concurrency)) {
-            await Promise.all(
-                timeframes.map(async (i) => this.fetcher(exchange, symbol, i, { limit: 1 }).then((candles) => {
-                    if (candles.length === 0) {
-                        throw new Error(`Failed to fetch sample data for timeframe ${i}`)
-                    }
+        this.emit('start')
 
-                    sampleData[i] = candles[0]
-                }))
-            )
-        }
+        this.stopFns.push(this.handlePairUpdate ? await exchange.watchPairs() : async () => void 0)
+        this.stopFns.push(await exchange.watchCandlesBatch(this.pairs.map((i) => [i.symbol, lowestTimeframe])))
 
-        return new TimeframeHelper(sampleData, { timezone })
+        this.isStarted = true
+        this.emit('started')
+
+        return async () => this.stop()
     }
 
-    protected async getCandles(symbol: string, timeframe: Timeframe, since: number, until: number, checkSince = true) {
-        if (until <= since) {
-            return []
+    public async stop() {
+        if (!this.isStarted || this.isStopping) {
+            return
         }
 
-        const candles = await this.fetcher(this.exchange, symbol, timeframe, { since, until })
+        this.isStopping = true
+        this.emit('stop')
 
-        if (this.validate) {
-            try {
-                validateCandles(candles, checkSince ? since : undefined, until)
-            } catch (error) {
-                throw new Error(`Failed to validate candles for symbol ${symbol}, timeframe: ${timeframe}, from ${since} to ${until}`, { cause: error })
-            }
+        for (const stop of this.stopFns) {
+            await stop()
         }
 
-        return candles
+        this.#initializing = undefined
+
+        this.exchange.off('candle', this.onCandle.bind(this))
+        this.exchange.off('pair-added', this.onNewPair.bind(this))
+        this.exchange.off('pair-update', this.onPairUpdate.bind(this))
+        this.exchange.off('pair-removed', this.onPairUpdate.bind(this))
+        this.store.clean()
+
+        this.isStarted = false
+        this.isStopping = false
+        this.emit('stopped')
     }
 
-    protected getValue<T>(input: Nullable<T>) {
-        if (isNullish(input)) {
-            throw new Error('Not initialized')
+    protected abstract initPair(pair: Pair, untilCandle: Candle): Promise<void>
+
+    protected abstract aggregate(pair: Pair, candle: Candle, isClose: boolean): Promise<void>
+
+    protected emitCandle(pair: Pair, timeframe: Timeframe, candle: Candle, isClose: boolean) {
+        const emitFrom = this.emitFrom[pair.symbol]?.[timeframe]
+
+        if ((emitFrom && candle.openTime >= emitFrom) || this.store.isActive(pair.symbol)) {
+            this.emit('candle', pair, timeframe, candle, isClose)
+        }
+    }
+
+    protected onCandle(symbol: string, timeframe: Timeframe, candle: Candle, isClose: boolean) {
+        if (this.isStopping || timeframe !== this.lowestTimeframe || !this.#pairs[symbol]) {
+            return
         }
 
-        return input as NonNullable<T>
+        if (this.lastReceivedOpenTimes[symbol] && this.lastReceivedOpenTimes[symbol] !== candle.openTime) {
+            throw new Error(`Candle are not continues: ${candle.openTime} !== ${this.lastReceivedOpenTimes[symbol]}`)
+        }
+
+        const pair = this.#pairs[symbol]
+
+        if (!this.store.has(symbol)) {
+            this.store.create(symbol)
+            this.initQueue.add(() => this.initPair(pair, candle))
+        }
+
+        if (isClose || this.store.isActive(symbol)) {
+            this.store.addToQueue(symbol, () => this.aggregate(pair, candle, isClose), -candle.openTime)
+        }
+
+        this.lastReceivedOpenTimes[symbol] = isClose ? candle.closeTime + 1 : candle.openTime
+    }
+
+    protected onNewPair(pair: Pair) {
+        if (this.isStopping || !this.autoAddNewPairs || !pair.isActive) {
+            return
+        }
+
+        this.#pairs[pair.symbol] = pair
+
+        this.exchange.watchCandles(pair.symbol, this.lowestTimeframe).then((stop) => {
+            this.stopFns.push(stop)
+        })
+    }
+
+    protected async onPairUpdate({ symbol, isActive }: Pair) {
+        if (this.isStopping || !this.#pairs[symbol] || isActive) {
+            return
+        }
+
+        if (this.unwatchOnPairDisabled) {
+            await this.exchange.unwatchCandles(symbol, this.lowestTimeframe)
+        }
+
+        await Promise.resolve(this.store.remove(symbol)).then(() => (
+            delete this.#pairs[symbol]
+        ))
     }
 }
