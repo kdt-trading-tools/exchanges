@@ -46,7 +46,7 @@ export class Limiter extends TypedEventEmitter<LimiterEvents> {
         }
 
         try {
-            return fn()
+            return await fn()
         } catch (error) {
             if (this.isRateLimitError(error)) {
                 const waitTime = this.getWaitTime(error)
