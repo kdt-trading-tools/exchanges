@@ -3,7 +3,7 @@ import { map } from '@khangdt22/utils/object'
 import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz'
 import type { Candle } from '../types'
 import { Timeframe } from '../constants'
-import { sortTimeframes } from './timeframes'
+import { sortTimeframes, isMinuteTimeframe, getTimeframeValue, isHourTimeframe } from './timeframes'
 
 export interface TimeframeHelperOptions {
     timezone?: string
@@ -27,31 +27,18 @@ export class TimeframeHelper {
 
     public getOpenTime(timeframe: Timeframe, timestamp: number) {
         const date = toDate(timestamp)
+
+        if (isMinuteTimeframe(timeframe)) {
+            return this.getOpenTimeInMinutes(date, getTimeframeValue(timeframe))
+        }
+
         const input = utcToZonedTime(date, this.timezone)
 
+        if (isHourTimeframe(timeframe)) {
+            return zonedTimeToUtc(this.getOpenTimeInHours(input, getTimeframeValue(timeframe)), this.timezone).getTime()
+        }
+
         switch (timeframe) {
-            case Timeframe.MIN1:
-                return this.getOpenTimeInMinutes(date, 1)
-            case Timeframe.MIN3:
-                return this.getOpenTimeInMinutes(date, 3)
-            case Timeframe.MIN5:
-                return this.getOpenTimeInMinutes(date, 5)
-            case Timeframe.MIN15:
-                return this.getOpenTimeInMinutes(date, 15)
-            case Timeframe.MIN30:
-                return this.getOpenTimeInMinutes(date, 30)
-            case Timeframe.HOUR1:
-                return zonedTimeToUtc(this.getOpenTimeInHours(input, 1), this.timezone).getTime()
-            case Timeframe.HOUR2:
-                return zonedTimeToUtc(this.getOpenTimeInHours(input, 2), this.timezone).getTime()
-            case Timeframe.HOUR4:
-                return zonedTimeToUtc(this.getOpenTimeInHours(input, 4), this.timezone).getTime()
-            case Timeframe.HOUR6:
-                return zonedTimeToUtc(this.getOpenTimeInHours(input, 6), this.timezone).getTime()
-            case Timeframe.HOUR8:
-                return zonedTimeToUtc(this.getOpenTimeInHours(input, 8), this.timezone).getTime()
-            case Timeframe.HOUR12:
-                return zonedTimeToUtc(this.getOpenTimeInHours(input, 12), this.timezone).getTime()
             case Timeframe.DAY1:
                 return zonedTimeToUtc(startOfDay(input), this.timezone).getTime()
             case Timeframe.DAY3:
@@ -104,10 +91,6 @@ export class TimeframeHelper {
         time.setMinutes(minutes - (minutes % value))
 
         return time.getTime()
-    }
-
-    protected getValue(timeframe: Timeframe) {
-        return Number(timeframe.slice(0, -1))
     }
 
     protected startOfWeek(timestamp: Date) {
