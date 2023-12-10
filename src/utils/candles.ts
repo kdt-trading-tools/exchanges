@@ -33,20 +33,22 @@ export function validateCandles(candles: Candle[], since?: number, until?: numbe
         throw new Error(`Invalid first candle open time, expected: ${since}, actual: ${candles[0].openTime}`)
     }
 
-    const lastCandle = last(candles)
+    if (candles.length > 1) {
+        const lastCandle = last(candles)
 
-    if (!isNullish(until) && lastCandle.closeTime !== until) {
-        throw new Error(`Invalid last candle close time, expected: ${until}, actual: ${lastCandle.closeTime}`)
+        if (!isNullish(until) && lastCandle.closeTime !== until) {
+            throw new Error(`Invalid last candle close time, expected: ${until}, actual: ${lastCandle.closeTime}`)
+        }
     }
 }
 
 export interface FetchCandlesOptions extends GetCandlesOptions {
-    onStart?: (e: Exchange, symbol: string, timeframe: Timeframe, options?: FetchCandlesOptions) => void
-    onEnd?: (candles: Candle[], e: Exchange, symbol: string, timeframe: Timeframe, o?: FetchCandlesOptions) => void
+    onStart?: () => Promise<void>
+    onEnd?: (candles: Candle[]) => Promise<void>
 }
 
 export async function fetchCandles(e: Exchange, symbol: string, timeframe: Timeframe, options?: FetchCandlesOptions) {
-    options?.onStart?.(e, symbol, timeframe, options)
+    await options?.onStart?.()
 
     const candles = await e.getCandles(symbol, timeframe, options)
 
@@ -64,7 +66,7 @@ export async function fetchCandles(e: Exchange, symbol: string, timeframe: Timef
         candles.push(...nextCandles)
     }
 
-    options?.onEnd?.(candles, e, symbol, timeframe, options)
+    await options?.onEnd?.(candles)
 
     return candles
 }
