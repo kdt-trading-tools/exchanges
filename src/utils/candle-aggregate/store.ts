@@ -53,7 +53,7 @@ export class CandleAggregateStore {
             this.closeOpenCandle(symbol, timeframe)
         }
 
-        return Object.assign({}, openCandle, { volume: formattedVolume, isClose: isCandleClose })
+        return { ...openCandle, volume: formattedVolume, isClose: isCandleClose }
     }
 
     public has(symbol: string) {
