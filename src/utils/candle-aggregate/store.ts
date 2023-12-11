@@ -128,7 +128,7 @@ export class CandleAggregateStore {
             this.setLastCloseCandle(symbol, timeframe, openCandle)
         }
 
-        delete this.get(symbol).openCandles[timeframe]
+        delete this.items[symbol]?.openCandles[timeframe]
     }
 
     public remove(symbol: string) {
