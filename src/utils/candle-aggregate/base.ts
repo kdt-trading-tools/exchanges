@@ -30,6 +30,7 @@ export interface CandleAggregateBaseOptions extends CandleAggregateHelperOptions
     initConcurrency?: number
     emitFrom?: Record<string, Record<string, number | undefined> | undefined>
     emitDelay?: number
+    validateEmit?: boolean
 }
 
 export abstract class BaseCandleAggregate extends TypedEventEmitter<CandleAggregateEvents> {
@@ -44,9 +45,12 @@ export abstract class BaseCandleAggregate extends TypedEventEmitter<CandleAggreg
 
     protected readonly stopFns: Fn[] = []
     protected readonly initQueue: PQueue
+
     protected readonly emitFrom: Record<string, Record<string, number | undefined> | undefined>
     protected readonly emitDelay: number
+    protected readonly validateEmit: boolean
     protected readonly emitQueues: Record<string, PQueue> = {}
+    protected readonly lastEmittedOpenTimes: Record<string, number> = {}
 
     protected isStarted = false
     protected isStopping = false
@@ -67,6 +71,7 @@ export abstract class BaseCandleAggregate extends TypedEventEmitter<CandleAggreg
 
         this.emitFrom = options.emitFrom ?? {}
         this.emitDelay = options.emitDelay ?? 50
+        this.validateEmit = options.validateEmit ?? true
         this.initQueue = new PQueue({ concurrency: options.initConcurrency ?? 1 })
 
         this.handlePairUpdate = options.handlePairUpdate ?? true
@@ -162,6 +167,14 @@ export abstract class BaseCandleAggregate extends TypedEventEmitter<CandleAggreg
     protected emitCandle(pair: Pair, timeframe: Timeframe, candle: Candle, isClose: boolean) {
         const emitFrom = this.emitFrom[pair.symbol]?.[timeframe]
         const id = `${pair.symbol}_${timeframe}`
+
+        if (this.validateEmit) {
+            if (this.lastEmittedOpenTimes[id] && this.lastEmittedOpenTimes[id] !== candle.openTime) {
+                throw new Error(`Failed to emit candle for symbol ${pair.symbol} (timeframe: ${timeframe}): candles are not continues (${candle.openTime} !== ${this.lastEmittedOpenTimes[id]})`)
+            }
+
+            this.lastEmittedOpenTimes[id] = isClose ? candle.closeTime + 1 : candle.openTime
+        }
 
         if ((emitFrom && candle.openTime >= emitFrom) || this.store.isActive(pair.symbol)) {
             this.emitWithDelay(id, () => this.emit('candle', pair, timeframe, candle, isClose), -candle.openTime)
