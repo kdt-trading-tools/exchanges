@@ -167,16 +167,21 @@ export abstract class BaseCandleAggregate extends TypedEventEmitter<CandleAggreg
     protected emitCandle(pair: Pair, timeframe: Timeframe, candle: Candle, isClose: boolean) {
         const emitFrom = this.emitFrom[pair.symbol]?.[timeframe]
         const id = `${pair.symbol}_${timeframe}`
+        const isActive = this.store.isActive(pair.symbol)
 
-        if (this.validateEmit) {
-            if (this.lastEmittedOpenTimes[id] && this.lastEmittedOpenTimes[id] !== candle.openTime) {
-                throw new Error(`Failed to emit candle for symbol ${pair.symbol} (timeframe: ${timeframe}): candles are not continues (${candle.openTime} !== ${this.lastEmittedOpenTimes[id]})`)
-            }
-
-            this.lastEmittedOpenTimes[id] = isClose ? candle.closeTime + 1 : candle.openTime
+        if (isActive && emitFrom && candle.openTime < emitFrom) {
+            return
         }
 
-        if ((emitFrom && candle.openTime >= emitFrom) || this.store.isActive(pair.symbol)) {
+        if ((emitFrom && candle.openTime >= emitFrom) || isActive) {
+            if (this.validateEmit) {
+                if (this.lastEmittedOpenTimes[id] && this.lastEmittedOpenTimes[id] !== candle.openTime) {
+                    throw new Error(`Failed to emit candle for symbol ${pair.symbol} (timeframe: ${timeframe}): candles are not continues (${candle.openTime} !== ${this.lastEmittedOpenTimes[id]})`)
+                }
+
+                this.lastEmittedOpenTimes[id] = isClose ? candle.closeTime + 1 : candle.openTime
+            }
+
             this.emitWithDelay(id, () => this.emit('candle', pair, timeframe, candle, isClose), -candle.openTime)
         }
     }
