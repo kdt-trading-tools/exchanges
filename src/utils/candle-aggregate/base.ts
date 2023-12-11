@@ -176,7 +176,7 @@ export abstract class BaseCandleAggregate extends TypedEventEmitter<CandleAggreg
         if ((emitFrom && candle.openTime >= emitFrom) || isActive) {
             if (this.validateEmit) {
                 if (this.lastEmittedOpenTimes[id] && this.lastEmittedOpenTimes[id] !== candle.openTime) {
-                    throw new Error(`Failed to emit candle for symbol ${pair.symbol} (timeframe: ${timeframe}): candles are not continues (${candle.openTime} !== ${this.lastEmittedOpenTimes[id]})`)
+                    throw new Error(`Failed to emit candle for symbol ${pair.symbol} (timeframe: ${timeframe}): candles are not continues (${candle.openTime} !== ${this.lastEmittedOpenTimes[id]}, emit from: ${emitFrom}, is synced: ${isActive})`)
                 }
 
                 this.lastEmittedOpenTimes[id] = isClose ? candle.closeTime + 1 : candle.openTime
