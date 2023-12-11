@@ -70,7 +70,7 @@ export abstract class BaseCandleAggregate extends TypedEventEmitter<CandleAggreg
         this.lowestTimeframe = this.helper.lowestTimeframe
 
         this.emitFrom = options.emitFrom ?? {}
-        this.emitDelay = options.emitDelay ?? 50
+        this.emitDelay = options.emitDelay ?? 0
         this.validateEmit = options.validateEmit ?? true
         this.initQueue = new PQueue({ concurrency: options.initConcurrency ?? 1 })
 
