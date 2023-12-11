@@ -29,6 +29,7 @@ export interface CandleAggregateBaseOptions extends CandleAggregateHelperOptions
     autoAddNewPairs?: boolean
     initConcurrency?: number
     emitFrom?: Record<string, Record<string, number | undefined> | undefined>
+    emitDelay?: number
 }
 
 export abstract class BaseCandleAggregate extends TypedEventEmitter<CandleAggregateEvents> {
@@ -44,6 +45,8 @@ export abstract class BaseCandleAggregate extends TypedEventEmitter<CandleAggreg
     protected readonly stopFns: Fn[] = []
     protected readonly initQueue: PQueue
     protected readonly emitFrom: Record<string, Record<string, number | undefined> | undefined>
+    protected readonly emitDelay: number
+    protected readonly emitQueues: Record<string, PQueue> = {}
 
     protected isStarted = false
     protected isStopping = false
@@ -63,6 +66,7 @@ export abstract class BaseCandleAggregate extends TypedEventEmitter<CandleAggreg
         this.lowestTimeframe = this.helper.lowestTimeframe
 
         this.emitFrom = options.emitFrom ?? {}
+        this.emitDelay = options.emitDelay ?? 50
         this.initQueue = new PQueue({ concurrency: options.initConcurrency ?? 1 })
 
         this.handlePairUpdate = options.handlePairUpdate ?? true
@@ -157,10 +161,23 @@ export abstract class BaseCandleAggregate extends TypedEventEmitter<CandleAggreg
 
     protected emitCandle(pair: Pair, timeframe: Timeframe, candle: Candle, isClose: boolean) {
         const emitFrom = this.emitFrom[pair.symbol]?.[timeframe]
+        const id = `${pair.symbol}_${timeframe}`
 
         if ((emitFrom && candle.openTime >= emitFrom) || this.store.isActive(pair.symbol)) {
-            this.emit('candle', pair, timeframe, candle, isClose)
+            this.emitWithDelay(id, () => this.emit('candle', pair, timeframe, candle, isClose), -candle.openTime)
         }
+    }
+
+    protected emitWithDelay(id: string, fn: Fn, priority?: number) {
+        if (!this.emitDelay) {
+            return fn()
+        }
+
+        this.getEmitQueue(id).add(fn, { priority })
+    }
+
+    protected getEmitQueue(id: string) {
+        return this.emitQueues[id] ??= new PQueue({ concurrency: 1, interval: this.emitDelay, intervalCap: 1 })
     }
 
     protected onCandle(symbol: string, timeframe: Timeframe, candle: Candle, isClose: boolean) {
