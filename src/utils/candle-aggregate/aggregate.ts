@@ -33,7 +33,7 @@ export class CandleAggregate extends BaseCandleAggregate {
         const { applyAt, candles: knownCandles = {} } = this.knownCandles[symbol] ?? {}
 
         for (const timeframe of this.timeframes) {
-            if (timeframe == this.lowestTimeframe) {
+            if (timeframe === this.lowestTimeframe) {
                 if (emit) {
                     this.emitCandle(pair, timeframe, candle, isClose)
                 }
