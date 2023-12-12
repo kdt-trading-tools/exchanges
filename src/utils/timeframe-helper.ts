@@ -37,6 +37,10 @@ export class TimeframeHelper {
     }
 
     public getOpenTime(timeframe: Timeframe, timestamp: number) {
+        if (timeframe === Timeframe.DAY3) {
+            return this.get3DaysOpenTime(timestamp)
+        }
+
         const date = toDate(timestamp)
 
         if (isMinuteTimeframe(timeframe)) {
@@ -52,8 +56,6 @@ export class TimeframeHelper {
         switch (timeframe) {
             case Timeframe.DAY1:
                 return zonedTimeToUtc(startOfDay(input), this.timezone).getTime()
-            case Timeframe.DAY3:
-                return zonedTimeToUtc(this.get3DaysOpenTime(input), this.timezone).getTime()
             case Timeframe.WEEK1:
                 return zonedTimeToUtc(this.startOfWeek(input), this.timezone).getTime()
             case Timeframe.MONTH1:
@@ -75,15 +77,15 @@ export class TimeframeHelper {
         return sortTimeframes(timeframes)
     }
 
-    protected get3DaysOpenTime(input: Date) {
-        const start = startOfDay(input)
+    protected get3DaysOpenTime(timestamp: number) {
+        const start = utcToZonedTime(this.getOpenTime(Timeframe.DAY1, timestamp), this.timezone)
         const sample = utcToZonedTime(this.sampleData[Timeframe.DAY3].openTime, this.timezone)
         const diff = Math.abs(differenceInDays(start, sample))
         const days = start.getDate()
 
         start.setDate(days - (diff % 3))
 
-        return start.getTime()
+        return zonedTimeToUtc(start, this.timezone).getTime()
     }
 
     protected getOpenTimeInHours(input: Date, value: number) {
