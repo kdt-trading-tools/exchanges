@@ -19,11 +19,13 @@ export interface CandleAggregateOptions extends CandleAggregateBaseOptions {
 
 export class CandleAggregate extends BaseCandleAggregate {
     protected readonly knownCandles: Record<string, KnownCandles | undefined>
+    protected readonly initializingPairs: Set<string>
 
     public constructor(exchange: Exchange, options: CandleAggregateOptions = {}) {
         super(exchange, options)
 
         this.knownCandles = options.knownCandles ?? {}
+        this.initializingPairs = new Set<string>()
     }
 
     protected async aggregate(pair: Pair, candle: Candle, isClose: boolean, options: AggregateOptions = {}) {
@@ -69,6 +71,11 @@ export class CandleAggregate extends BaseCandleAggregate {
     }
 
     protected async initPair(pair: Pair, untilCandle: Candle) {
+        if (this.initializingPairs.has(pair.symbol)) {
+            return
+        }
+
+        this.initializingPairs.add(pair.symbol)
         this.emit('pair-init', pair, untilCandle)
 
         const openTimes = Object.fromEntries(
@@ -77,8 +84,7 @@ export class CandleAggregate extends BaseCandleAggregate {
 
         const knownUntil = this.knownCandles[pair.symbol]?.applyAt
         const until = untilCandle.openTime - 1
-        const lowestOpenTime = Math.min(...Object.values(openTimes))
-        const since = knownUntil && knownUntil > lowestOpenTime ? knownUntil : lowestOpenTime
+        const since = knownUntil ?? Math.min(...Object.values(openTimes))
 
         if (until > since) {
             const fetchOpts = { since, until, validateSince: false }
@@ -91,6 +97,7 @@ export class CandleAggregate extends BaseCandleAggregate {
         }
 
         this.store.active(pair.symbol)
+        this.initializingPairs.delete(pair.symbol)
         this.emit('pair-initialized', pair)
     }
 }
