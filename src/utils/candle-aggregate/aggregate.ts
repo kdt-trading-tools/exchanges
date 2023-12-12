@@ -65,7 +65,7 @@ export class CandleAggregate extends BaseCandleAggregate {
             aggregatedCandles[timeframe] = this.store.getOpenCandle(symbol, timeframe) ?? aggregated
         }
 
-        if (isClose) {
+        if (isClose && this.store.isActive(symbol)) {
             this.emit('aggregated', pair, candle, aggregatedCandles)
         }
     }
