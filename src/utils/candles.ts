@@ -12,8 +12,12 @@ export function createCandle(openTime: number, closeTime: number, open: number):
     return { openTime, closeTime, open, high: open, low: open, close: open, volume: 0 }
 }
 
-export function ensureContinuous(candles: Candle[]) {
+export function ensureContinuous(candles: Candle[], onlyClose?: boolean) {
     for (const [i, candle] of candles.entries()) {
+        if (onlyClose && candle.closeTime > Date.now()) {
+            throw new Error(`Candle close time is in the future: ${candle.closeTime}`)
+        }
+
         const next = candles[i + 1]
 
         if (next && !isContinuous(candle, next)) {
