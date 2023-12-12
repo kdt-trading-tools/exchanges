@@ -47,13 +47,15 @@ export class CandleAggregate extends BaseCandleAggregate {
                 continue
             }
 
-            const { openTime, closeTime } = this.timeframeHelper.getCandleTimes(timeframe, candle.openTime)
-            const knownCandle = knownCandles[timeframe]
+            if (!this.store.hasOpenCandle(symbol, timeframe)) {
+                const { openTime, closeTime } = this.timeframeHelper.getCandleTimes(timeframe, candle.openTime)
+                const knownCandle = knownCandles[timeframe]
 
-            if (knownCandle && applyAt && applyAt == candle.openTime) {
-                this.store.setOpenCandle(symbol, timeframe, knownCandle)
-            } else if (openTime == candle.openTime || (listingAt && listingAt == candle.openTime)) {
-                this.store.createOpenCandle(symbol, timeframe, openTime, closeTime, candle.open)
+                if (knownCandle && applyAt && applyAt == candle.openTime) {
+                    this.store.setOpenCandle(symbol, timeframe, knownCandle)
+                } else if (openTime == candle.openTime || (listingAt && listingAt == candle.openTime)) {
+                    this.store.createOpenCandle(symbol, timeframe, openTime, closeTime, candle.open)
+                }
             }
 
             const aggregated = this.store.aggregate(symbol, timeframe, candle, isClose, { precision })

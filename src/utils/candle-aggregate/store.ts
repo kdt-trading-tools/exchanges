@@ -35,29 +35,34 @@ export class CandleAggregateStore {
             throw new Error(`Invalid aggregate candle (${candle.openTime}) for symbol ${symbol} (timeframe: ${timeframe}): ${candle.openTime} < ${openCandle.openTime}`)
         }
 
-        const volume = openCandle.volume + candle.volume
-        const formattedVolume = precision ? round(volume, precision) : volume
-        const isCandleClose = isClose && candle.closeTime === openCandle.closeTime
+        const aggregateCandle = { ...openCandle }
+        const volume = aggregateCandle.volume + candle.volume
+        const isCandleClose = isClose && candle.closeTime === aggregateCandle.closeTime
 
-        openCandle.high = Math.max(openCandle.high, candle.high)
-        openCandle.low = Math.min(openCandle.low, candle.low)
-        openCandle.close = candle.close
-
-        if (isClose) {
-            openCandle.volume = formattedVolume
-        }
+        aggregateCandle.high = Math.max(aggregateCandle.high, candle.high)
+        aggregateCandle.low = Math.min(aggregateCandle.low, candle.low)
+        aggregateCandle.close = candle.close
+        aggregateCandle.volume = precision ? round(volume, precision) : volume
 
         this.items[symbol].lastAggregateCandles[timeframe] = candle
+
+        if (isClose) {
+            this.items[symbol].openCandles[timeframe] = aggregateCandle
+        }
 
         if (isCandleClose) {
             this.closeOpenCandle(symbol, timeframe)
         }
 
-        return { ...openCandle, volume: formattedVolume, isClose: isCandleClose }
+        return { ...aggregateCandle, isClose: isCandleClose } as Candle & { isClose: boolean }
     }
 
     public has(symbol: string) {
         return symbol in this.items
+    }
+
+    public hasOpenCandle(symbol: string, timeframe: Timeframe) {
+        return !!this.items[symbol]?.openCandles[timeframe]
     }
 
     public isActive(symbol: string) {
@@ -97,10 +102,18 @@ export class CandleAggregateStore {
     }
 
     public setLastCloseCandle(symbol: string, timeframe: Timeframe, candle: Candle) {
+        if (!this.isContinuous(symbol, timeframe, candle)) {
+            throw new Error(`New last close candle (${candle.openTime}) for symbol ${symbol} (timeframe: ${timeframe}) are not continuous with last close candle (${this.getLastCloseCandle(symbol, timeframe)?.openTime})`)
+        }
+
         return this.get(symbol).lastCloseCandles[timeframe] = candle
     }
 
     public setOpenCandle(symbol: string, timeframe: Timeframe, candle: Candle) {
+        if (this.hasOpenCandle(symbol, timeframe)) {
+            throw new Error(`Open candle for symbol ${symbol} (timeframe: ${timeframe}) already exists`)
+        }
+
         if (!this.isContinuous(symbol, timeframe, candle)) {
             throw new Error(`New open candle (${candle.openTime}) for symbol ${symbol} (timeframe: ${timeframe}) are not continuous with last close candle (${this.getLastCloseCandle(symbol, timeframe)?.openTime})`)
         }
