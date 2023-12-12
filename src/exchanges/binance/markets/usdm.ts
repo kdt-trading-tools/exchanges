@@ -1,7 +1,7 @@
 import type { FuturesSymbolExchangeInfo } from 'binance'
 import { USDMClient } from 'binance'
 import { BinanceExchange } from '../exchange'
-import { Market } from '../constants'
+import { Market, defaultIntervals } from '../constants'
 import type { BinanceExchangeOptions } from '../types'
 import type { Precision } from '../../../types'
 
@@ -10,6 +10,7 @@ export class BinanceUSDM extends BinanceExchange {
 
     protected readonly market: Market
     protected readonly restClient: USDMClient
+    protected readonly supportedIntervals = defaultIntervals
 
     public constructor(options?: BinanceExchangeOptions) {
         super(options)

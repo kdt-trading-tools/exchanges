@@ -1,112 +1,97 @@
-import { endOfMonth, startOfMonth, startOfWeek, startOfDay, differenceInDays, startOfMinute, toDate, startOfHour } from 'date-fns'
-import { map } from '@khangdt22/utils/object'
+import { startOfSecond, startOfMinute, startOfHour, startOfDay, startOfMonth, startOfYear, differenceInSeconds, differenceInMinutes, differenceInHours, differenceInDays, differenceInMonths, differenceInYears, startOfWeek } from 'date-fns'
 import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz'
-import type { Candle } from '../types'
-import { Timeframe } from '../constants'
-import { sortTimeframes, isMinuteTimeframe, getTimeframeValue, isHourTimeframe } from './timeframes'
+import type { Timeframe, TimeframeUnit as Unit } from './timeframes'
+import { timeframeToMilliseconds, parseTimeframe } from './timeframes'
 
 export interface TimeframeHelperOptions {
     timezone?: string
     weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6
 }
 
+type StartFn = (date: Date | number) => Date
+type DiffFn = (from: Date | number, to: Date | number) => number
+type GetFn = (date: Date) => number
+type SetFn = (date: Date, value: number) => void
+
 export class TimeframeHelper {
-    protected readonly lengths: Record<string, number>
+    protected static startFns: Record<Exclude<Unit, 'w'>, StartFn> = {
+        s: startOfSecond,
+        m: startOfMinute,
+        h: startOfHour,
+        d: startOfDay,
+        M: startOfMonth,
+        y: startOfYear,
+    }
+
+    protected static diffFns: Record<Exclude<Unit, 'w'>, DiffFn> = {
+        s: differenceInSeconds,
+        m: differenceInMinutes,
+        h: differenceInHours,
+        d: differenceInDays,
+        M: differenceInMonths,
+        y: differenceInYears,
+    }
+
+    protected static getFns: Record<Exclude<Unit, 'w'>, GetFn> = {
+        s: (date) => date.getSeconds(),
+        m: (date) => date.getMinutes(),
+        h: (date) => date.getHours(),
+        d: (date) => date.getDate(),
+        M: (date) => date.getMonth(),
+        y: (date) => date.getFullYear(),
+    }
+
+    protected static setFns: Record<Exclude<Unit, 'w'>, SetFn> = {
+        s: (date, value) => date.setSeconds(value),
+        m: (date, value) => date.setMinutes(value),
+        h: (date, value) => date.setHours(value),
+        d: (date, value) => date.setDate(value),
+        M: (date, value) => date.setMonth(value),
+        y: (date, value) => date.setFullYear(value),
+    }
+
     protected readonly timezone: string
     protected readonly weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6
 
-    public constructor(protected readonly sampleData: Record<string, Candle>, options: TimeframeHelperOptions = {}) {
-        this.lengths = map(sampleData, (timeframe, candle) => [timeframe, candle.closeTime - candle.openTime])
+    public constructor(options: TimeframeHelperOptions = {}) {
         this.timezone = options.timezone ?? 'UTC'
         this.weekStartsOn = options.weekStartsOn ?? 1
     }
 
-    public isOpenTime(timeframe: Timeframe, timestamp: number) {
-        return this.getOpenTime(timeframe, timestamp) === timestamp
-    }
-
-    public getLowestOpenTime(timeframes: Timeframe[], timestamp: number) {
-        return Math.min(...timeframes.map((timeframe) => this.getOpenTime(timeframe, timestamp)))
-    }
-
-    public getCandleTimes(timeframe: Timeframe, timestamp: number) {
-        const openTime = this.getOpenTime(timeframe, timestamp)
+    public getCandleTimes(timeframe: Timeframe, from: number, divideBy: number) {
+        const openTime = this.getOpenTime(timeframe, from, divideBy)
         const closeTime = this.getCloseTime(timeframe, openTime)
 
         return { openTime, closeTime }
     }
 
-    public getOpenTime(timeframe: Timeframe, timestamp: number) {
-        if (timeframe === Timeframe.DAY3) {
-            return this.get3DaysOpenTime(timestamp)
+    public getOpenTime(timeframe: Timeframe, from: number, divideBy: number) {
+        const { unit, value: timeframeValue } = parseTimeframe(timeframe)
+
+        if (unit === 'w') {
+            if (timeframeValue !== 1) {
+                throw new Error(`Invalid timeframe: ${timeframe}`)
+            }
+
+            return zonedTimeToUtc(this.startOfWeek(utcToZonedTime(from, this.timezone)), this.timezone).getTime()
         }
 
-        const date = toDate(timestamp)
+        const start = TimeframeHelper.startFns[unit](utcToZonedTime(from, this.timezone))
+        const divideByDate = utcToZonedTime(divideBy, this.timezone)
 
-        if (isMinuteTimeframe(timeframe)) {
-            return this.getOpenTimeInMinutes(date, getTimeframeValue(timeframe))
-        }
+        const diff = Math.abs(TimeframeHelper.diffFns[unit](start, divideByDate))
+        const value = TimeframeHelper.getFns[unit](start)
 
-        const input = utcToZonedTime(date, this.timezone)
-
-        if (isHourTimeframe(timeframe)) {
-            return zonedTimeToUtc(this.getOpenTimeInHours(input, getTimeframeValue(timeframe)), this.timezone).getTime()
-        }
-
-        switch (timeframe) {
-            case Timeframe.DAY1:
-                return zonedTimeToUtc(startOfDay(input), this.timezone).getTime()
-            case Timeframe.WEEK1:
-                return zonedTimeToUtc(this.startOfWeek(input), this.timezone).getTime()
-            case Timeframe.MONTH1:
-                return zonedTimeToUtc(startOfMonth(input), this.timezone).getTime()
-            default:
-                throw new Error(`Timeframe ${timeframe} is not supported`)
-        }
-    }
-
-    public getCloseTime(timeframe: Timeframe, openTime: number) {
-        if (timeframe === Timeframe.MONTH1) {
-            return zonedTimeToUtc(endOfMonth(utcToZonedTime(openTime, this.timezone)), this.timezone).getTime()
-        }
-
-        return openTime + this.lengths[timeframe]
-    }
-
-    public sort(timeframes: Timeframe[]) {
-        return sortTimeframes(timeframes)
-    }
-
-    protected get3DaysOpenTime(timestamp: number) {
-        const start = utcToZonedTime(this.getOpenTime(Timeframe.DAY1, timestamp), this.timezone)
-        const sample = utcToZonedTime(this.sampleData[Timeframe.DAY3].openTime, this.timezone)
-        const diff = Math.abs(differenceInDays(start, sample))
-        const days = start.getDate()
-
-        start.setDate(days - (diff % 3))
+        TimeframeHelper.setFns[unit](start, value - (diff % timeframeValue))
 
         return zonedTimeToUtc(start, this.timezone).getTime()
     }
 
-    protected getOpenTimeInHours(input: Date, value: number) {
-        const time = startOfHour(input)
-        const hours = time.getHours()
-
-        time.setHours(hours - (hours % value))
-
-        return time.getTime()
+    public getCloseTime(timeframe: Timeframe, openTime: number) {
+        return openTime + timeframeToMilliseconds(timeframe, openTime) - 1
     }
 
-    protected getOpenTimeInMinutes(input: Date, value: number) {
-        const time = startOfMinute(input)
-        const minutes = time.getMinutes()
-
-        time.setMinutes(minutes - (minutes % value))
-
-        return time.getTime()
-    }
-
-    protected startOfWeek(timestamp: Date) {
+    protected startOfWeek(timestamp: Date | number) {
         return startOfWeek(timestamp, { weekStartsOn: this.weekStartsOn }).getTime()
     }
 }

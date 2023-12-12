@@ -3,10 +3,10 @@ import { isNullish } from '@khangdt22/utils/condition'
 import type { Nullable } from '@khangdt22/utils/types'
 import type { Exchange, GetCandlesOptions } from '../../exchanges'
 import type { Candle, Pair } from '../../types'
-import { Timeframe } from '../../constants'
 import { validateCandles, fetchCandles } from '../candles'
 import { TimeframeHelper } from '../timeframe-helper'
-import { sortTimeframes } from '../timeframes'
+import { sortTimeframes, type Timeframe, type TimeframeStr, toTimeframeStr } from '../timeframes'
+import { TimeframeEnum } from '../../constants'
 
 export type CandlesFetcher = (e: Exchange, s: string, t: Timeframe, o?: GetCandlesOptions) => Promise<Candle[]>
 
@@ -23,17 +23,18 @@ export interface CandleAggregateHelperOptions {
 }
 
 export class CandleAggregateHelper {
-    public readonly lowestTimeframe: Timeframe
-    public readonly timeframes: Timeframe[]
+    public readonly lowestTimeframe: TimeframeStr
+    public readonly timeframes: TimeframeStr[]
+    public readonly concurrency: number
 
     protected readonly inputPairs?: Array<string | Pair>
     protected readonly fetcher: CandlesFetcher
     protected readonly validateCandles: boolean
-    protected readonly concurrency: number
+    protected readonly divideBy: Record<string, Promise<number>> = {}
 
     public constructor(public readonly exchange: Exchange, options: CandleAggregateHelperOptions = {}) {
         this.inputPairs = options.pairs
-        this.timeframes = options.timeframes ?? Object.values(Timeframe)
+        this.timeframes = options.timeframes?.map((i) => toTimeframeStr(i)) ?? Object.values(TimeframeEnum)
         this.fetcher = options.fetcher ?? fetchCandles
         this.validateCandles = options.validateCandles ?? true
         this.concurrency = options.concurrency ?? 10
@@ -52,18 +53,7 @@ export class CandleAggregateHelper {
     }
 
     public async createTimeframeHelper() {
-        const exchange = this.exchange
-        const [timezone, symbol] = await Promise.all([exchange.getTimezone(), exchange.getSymbolForSampleData()])
-        const sampleData: Record<string, Candle> = {}
-
-        for (const timeframes of chunk(this.timeframes, this.concurrency)) {
-            const requests = timeframes.map(async (i) => [i, await this.getSampleData(symbol, i)] as const)
-            const result = Object.fromEntries(await Promise.all(requests))
-
-            Object.assign(sampleData, result)
-        }
-
-        return new TimeframeHelper(sampleData, { timezone })
+        return new TimeframeHelper({ timezone: await this.exchange.getTimezone() })
     }
 
     public async fetchCandles(symbol: string, timeframe: Timeframe, options: FetchCandlesOptions = {}) {
@@ -94,6 +84,24 @@ export class CandleAggregateHelper {
         return input as NonNullable<T>
     }
 
+    public async getLatestOpenTime(symbol: string, timeframe: Timeframe) {
+        return this.getLatestCandle(symbol, timeframe).then((candle) => candle?.openTime)
+    }
+
+    public async getLatestCandle(symbol: string, timeframe: Timeframe) {
+        return this.fetchCandles(symbol, timeframe, { limit: 1 }).then((candles) => candles.at(0))
+    }
+
+    public async getDivideBy(symbol: string, timeframe: Timeframe) {
+        return this.divideBy[`${symbol}_${timeframe}`] ??= this.getLatestOpenTime(symbol, timeframe).then((openTime) => {
+            if (isNullish(openTime)) {
+                throw new Error(`Failed to get latest open time for symbol ${symbol} (timeframe: ${timeframe})`)
+            }
+
+            return openTime
+        })
+    }
+
     protected async getPair(symbol: string | Pair) {
         if (typeof symbol === 'string') {
             const pair = await this.exchange.getPair(symbol)
@@ -106,19 +114,5 @@ export class CandleAggregateHelper {
         }
 
         return symbol
-    }
-
-    protected async getSampleData(symbol: string, timeframe: Timeframe) {
-        const latestCandle = await this.getLatestCandle(symbol, timeframe)
-
-        if (isNullish(latestCandle)) {
-            throw new Error(`Failed to get sample data for symbol ${symbol}, timeframe: ${timeframe}`)
-        }
-
-        return latestCandle
-    }
-
-    protected async getLatestCandle(symbol: string, timeframe: Timeframe) {
-        return this.fetchCandles(symbol, timeframe, { limit: 1 }).then((candles) => candles[0])
     }
 }

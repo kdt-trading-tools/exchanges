@@ -3,9 +3,9 @@ import { createDeferred } from '@khangdt22/utils/promise'
 import type { Fn } from '@khangdt22/utils/function'
 import PQueue from 'p-queue'
 import type { Exchange } from '../../exchanges'
-import type { Timeframe } from '../../constants'
 import type { Pair, Candle } from '../../types'
 import type { TimeframeHelper } from '../timeframe-helper'
+import type { TimeframeStr } from '../timeframes'
 import type { CandleAggregateHelperOptions } from './helper'
 import { CandleAggregateHelper } from './helper'
 import { CandleAggregateStore } from './store'
@@ -19,8 +19,8 @@ export type CandleAggregateEvents = {
     'stopped': () => void
     'pair-init': (pair: Pair, untilCandle: Candle) => void
     'pair-initialized': (pair: Pair) => void
-    'candle': (pair: Pair, timeframe: Timeframe, candle: Candle, isClose: boolean) => void
-    'aggregated': (pair: Pair, candle: Candle, aggregatedCandles: Record<string, Candle>) => void
+    'candle': (pair: Pair, timeframe: TimeframeStr, candle: Candle, isClose: boolean) => void
+    'aggregated': (pair: Pair, candle: Candle, aggregatedCandles: Record<TimeframeStr, Candle>) => void
 }
 
 export interface CandleAggregateBaseOptions extends CandleAggregateHelperOptions {
@@ -28,7 +28,7 @@ export interface CandleAggregateBaseOptions extends CandleAggregateHelperOptions
     unwatchOnPairDisabled?: boolean
     autoAddNewPairs?: boolean
     initConcurrency?: number
-    emitFrom?: Record<string, Record<string, number | undefined> | undefined>
+    emitFrom?: Record<string, Record<TimeframeStr, number | undefined> | undefined>
     emitDelay?: number
     validateEmit?: boolean
 }
@@ -36,8 +36,8 @@ export interface CandleAggregateBaseOptions extends CandleAggregateHelperOptions
 export abstract class BaseCandleAggregate extends TypedEventEmitter<CandleAggregateEvents> {
     public readonly helper: CandleAggregateHelper
     public readonly store: CandleAggregateStore
-    public readonly timeframes: Timeframe[]
-    public readonly lowestTimeframe: Timeframe
+    public readonly timeframes: TimeframeStr[]
+    public readonly lowestTimeframe: TimeframeStr
 
     protected readonly handlePairUpdate: boolean
     protected readonly unwatchOnPairDisabled: boolean
@@ -46,7 +46,7 @@ export abstract class BaseCandleAggregate extends TypedEventEmitter<CandleAggreg
     protected readonly stopFns: Fn[] = []
     protected readonly initQueue: PQueue
 
-    protected readonly emitFrom: Record<string, Record<string, number | undefined> | undefined>
+    protected readonly emitFrom: Record<string, Record<TimeframeStr, number | undefined> | undefined>
     protected readonly emitDelay: number
     protected readonly validateEmit: boolean
     protected readonly emitQueues: Record<string, PQueue> = {}
@@ -164,7 +164,7 @@ export abstract class BaseCandleAggregate extends TypedEventEmitter<CandleAggreg
 
     protected abstract aggregate(pair: Pair, candle: Candle, isClose: boolean): Promise<void>
 
-    protected emitCandle(pair: Pair, timeframe: Timeframe, candle: Candle, isClose: boolean) {
+    protected emitCandle(pair: Pair, timeframe: TimeframeStr, candle: Candle, isClose: boolean) {
         const emitFrom = this.emitFrom[pair.symbol]?.[timeframe]
         const id = `${pair.symbol}_${timeframe}`
         const isActive = this.store.isActive(pair.symbol)
@@ -198,7 +198,7 @@ export abstract class BaseCandleAggregate extends TypedEventEmitter<CandleAggreg
         return this.emitQueues[id] ??= new PQueue({ concurrency: 1, interval: this.emitDelay, intervalCap: 1 })
     }
 
-    protected onCandle(symbol: string, timeframe: Timeframe, candle: Candle, isClose: boolean) {
+    protected onCandle(symbol: string, timeframe: TimeframeStr, candle: Candle, isClose: boolean) {
         if (this.isStopping || timeframe !== this.lowestTimeframe || !this.#pairs[symbol]) {
             return
         }

@@ -2,7 +2,7 @@ import { last } from '@khangdt22/utils/array'
 import { isNullish } from '@khangdt22/utils/condition'
 import type { Candle } from '../types'
 import type { Exchange, GetCandlesOptions } from '../exchanges'
-import type { Timeframe } from '../constants'
+import type { Timeframe } from './timeframes'
 
 export function isContinuous(current: Candle, next: Candle) {
     return current.closeTime + 1 === next.openTime

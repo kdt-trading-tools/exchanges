@@ -1,8 +1,8 @@
-import type { SymbolExchangeInfo, SymbolPriceFilter, SymbolLotSizeFilter } from 'binance'
+import type { SymbolExchangeInfo, SymbolPriceFilter, SymbolLotSizeFilter, KlineInterval } from 'binance'
 import { MainClient } from 'binance'
 import { rtrim } from '@khangdt22/utils/string'
 import { BinanceExchange } from '../exchange'
-import { Market } from '../constants'
+import { Market, defaultIntervals } from '../constants'
 import type { BinanceExchangeOptions } from '../types'
 import type { Precision } from '../../../types'
 
@@ -11,6 +11,7 @@ export class BinanceSpot extends BinanceExchange {
 
     protected readonly market: Market
     protected readonly restClient: MainClient
+    protected readonly supportedIntervals: KlineInterval[] = ['1s', ...defaultIntervals]
 
     public constructor(options?: BinanceExchangeOptions) {
         super(options)

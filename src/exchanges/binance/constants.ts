@@ -1,8 +1,13 @@
+import type { KlineInterval } from 'binance'
+import { TimeframeEnum } from '../../constants'
+
 export enum Market {
     SPOT = 'spot',
     USDM = 'usdm',
     COINM = 'coinm',
 }
+
+export const defaultIntervals: KlineInterval[] = Object.values(TimeframeEnum)
 
 export const getCandlesLimits: Record<Market, number> = {
     [Market.SPOT]: 1000,

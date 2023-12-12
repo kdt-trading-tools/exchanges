@@ -1,15 +1,15 @@
 import PQueue from 'p-queue'
 import type { Candle } from '../../types'
-import type { Timeframe } from '../../constants'
 import { createCandle, isContinuous } from '../candles'
 import { round } from '../number'
+import type { TimeframeStr } from '../timeframes'
 
 export interface CandleAggregateStoreItem {
     isActive?: boolean
     queue: PQueue
-    openCandles: Record<string, Candle | undefined>
-    lastCloseCandles: Record<string, Candle | undefined>
-    lastAggregateCandles: Record<string, Candle | undefined>
+    openCandles: Record<TimeframeStr, Candle | undefined>
+    lastCloseCandles: Record<TimeframeStr, Candle | undefined>
+    lastAggregateCandles: Record<TimeframeStr, Candle | undefined>
 }
 
 interface AggregateOpts {
@@ -19,20 +19,20 @@ interface AggregateOpts {
 export class CandleAggregateStore {
     protected readonly items: Record<string, CandleAggregateStoreItem> = {}
 
-    public aggregate(symbol: string, timeframe: Timeframe, candle: Candle, isClose: boolean, options: AggregateOpts) {
-        if (!this.isValidAggregateCandle(symbol, timeframe, candle)) {
-            throw new Error(`Aggregate candle (${candle.openTime}) for symbol ${symbol} (timeframe: ${timeframe}) is not continuous with last aggregated candle (${this.items[symbol]?.lastAggregateCandles[timeframe]?.openTime})`)
+    public aggregate(symbol: string, tf: TimeframeStr, candle: Candle, isClose: boolean, options: AggregateOpts = {}) {
+        if (!this.isValidAggregateCandle(symbol, tf, candle)) {
+            throw new Error(`Aggregate candle (${candle.openTime}) for symbol ${symbol} (timeframe: ${tf}) is not continuous with last aggregated candle (${this.items[symbol]?.lastAggregateCandles[tf]?.openTime})`)
         }
 
-        const openCandle = this.getOpenCandle(symbol, timeframe)
+        const openCandle = this.getOpenCandle(symbol, tf)
         const { precision } = options
 
         if (!openCandle) {
-            throw new Error(`Missing open candle for symbol ${symbol} (timeframe: ${timeframe}), aggregate candle: ${candle.openTime}`)
+            throw new Error(`Missing open candle for symbol ${symbol} (timeframe: ${tf}), aggregate candle: ${candle.openTime}`)
         }
 
         if (candle.openTime < openCandle.openTime) {
-            throw new Error(`Invalid aggregate candle (${candle.openTime}) for symbol ${symbol} (timeframe: ${timeframe}): ${candle.openTime} < ${openCandle.openTime}`)
+            throw new Error(`Invalid aggregate candle (${candle.openTime}) for symbol ${symbol} (timeframe: ${tf}): ${candle.openTime} < ${openCandle.openTime}`)
         }
 
         const aggregateCandle = { ...openCandle }
@@ -44,14 +44,14 @@ export class CandleAggregateStore {
         aggregateCandle.close = candle.close
         aggregateCandle.volume = precision ? round(volume, precision) : volume
 
-        this.items[symbol].lastAggregateCandles[timeframe] = candle
+        this.items[symbol].lastAggregateCandles[tf] = candle
 
         if (isClose) {
-            this.items[symbol].openCandles[timeframe] = aggregateCandle
+            this.items[symbol].openCandles[tf] = aggregateCandle
         }
 
         if (isCandleClose) {
-            this.closeOpenCandle(symbol, timeframe)
+            this.closeOpenCandle(symbol, tf)
         }
 
         return { ...aggregateCandle, isClose: isCandleClose } as Candle & { isClose: boolean }
@@ -61,7 +61,7 @@ export class CandleAggregateStore {
         return symbol in this.items
     }
 
-    public hasOpenCandle(symbol: string, timeframe: Timeframe) {
+    public hasOpenCandle(symbol: string, timeframe: TimeframeStr) {
         return !!this.items[symbol]?.openCandles[timeframe]
     }
 
@@ -69,7 +69,7 @@ export class CandleAggregateStore {
         return !!this.items[symbol]?.isActive
     }
 
-    public isContinuous(symbol: string, timeframe: Timeframe, candle: Candle) {
+    public isContinuous(symbol: string, timeframe: TimeframeStr, candle: Candle) {
         const lastCloseCandle = this.getLastCloseCandle(symbol, timeframe)
 
         if (!lastCloseCandle) {
@@ -79,7 +79,7 @@ export class CandleAggregateStore {
         return isContinuous(lastCloseCandle, candle)
     }
 
-    public isValidAggregateCandle(symbol: string, timeframe: Timeframe, candle: Candle) {
+    public isValidAggregateCandle(symbol: string, timeframe: TimeframeStr, candle: Candle) {
         const lastAggregateCandle = this.items[symbol]?.lastAggregateCandles[timeframe]
 
         if (!lastAggregateCandle) {
@@ -93,15 +93,15 @@ export class CandleAggregateStore {
         return this.items[symbol] ?? this.create(symbol)
     }
 
-    public getLastCloseCandle(symbol: string, timeframe: Timeframe) {
+    public getLastCloseCandle(symbol: string, timeframe: TimeframeStr) {
         return this.items[symbol]?.lastCloseCandles[timeframe]
     }
 
-    public getOpenCandle(symbol: string, timeframe: Timeframe) {
+    public getOpenCandle(symbol: string, timeframe: TimeframeStr) {
         return this.items[symbol]?.openCandles[timeframe]
     }
 
-    public setLastCloseCandle(symbol: string, timeframe: Timeframe, candle: Candle) {
+    public setLastCloseCandle(symbol: string, timeframe: TimeframeStr, candle: Candle) {
         if (!this.isContinuous(symbol, timeframe, candle)) {
             throw new Error(`New last close candle (${candle.openTime}) for symbol ${symbol} (timeframe: ${timeframe}) are not continuous with last close candle (${this.getLastCloseCandle(symbol, timeframe)?.openTime})`)
         }
@@ -109,7 +109,7 @@ export class CandleAggregateStore {
         return this.get(symbol).lastCloseCandles[timeframe] = candle
     }
 
-    public setOpenCandle(symbol: string, timeframe: Timeframe, candle: Candle) {
+    public setOpenCandle(symbol: string, timeframe: TimeframeStr, candle: Candle) {
         if (this.hasOpenCandle(symbol, timeframe)) {
             throw new Error(`Open candle for symbol ${symbol} (timeframe: ${timeframe}) already exists`)
         }
@@ -121,8 +121,8 @@ export class CandleAggregateStore {
         return this.get(symbol).openCandles[timeframe] = candle
     }
 
-    public createOpenCandle(symbol: string, timeframe: Timeframe, openTime: number, closeTime: number, price: number) {
-        return this.setOpenCandle(symbol, timeframe, createCandle(openTime, closeTime, price))
+    public createOpenCandle(symbol: string, tf: TimeframeStr, openTime: number, closeTime: number, price: number) {
+        return this.setOpenCandle(symbol, tf, createCandle(openTime, closeTime, price))
     }
 
     public create(symbol: string) {
@@ -134,7 +134,7 @@ export class CandleAggregateStore {
         }
     }
 
-    public closeOpenCandle(symbol: string, timeframe: Timeframe) {
+    public closeOpenCandle(symbol: string, timeframe: TimeframeStr) {
         const openCandle = this.getOpenCandle(symbol, timeframe)
 
         if (openCandle) {

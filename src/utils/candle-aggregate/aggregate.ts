@@ -1,16 +1,18 @@
+import { chunk } from '@khangdt22/utils/array'
 import type { Pair, Candle } from '../../types'
 import type { Exchange } from '../../exchanges'
+import type { TimeframeStr } from '../timeframes'
 import { BaseCandleAggregate, type CandleAggregateBaseOptions } from './base'
 
 interface AggregateOptions {
     emit?: boolean
-    aggregateFrom?: Record<string, number>
+    aggregateFrom?: Record<TimeframeStr, number>
     listingAt?: number
 }
 
 export interface KnownCandles {
     applyAt: number
-    candles: Record<string, Candle | undefined>
+    candles: Record<TimeframeStr, Candle | undefined>
 }
 
 export interface CandleAggregateOptions extends CandleAggregateBaseOptions {
@@ -48,13 +50,13 @@ export class CandleAggregate extends BaseCandleAggregate {
             }
 
             if (!this.store.hasOpenCandle(symbol, timeframe)) {
-                const { openTime, closeTime } = this.timeframeHelper.getCandleTimes(timeframe, candle.openTime)
+                const { openTime, closeTime } = await this.getCandleTimes(symbol, timeframe, candle.openTime)
                 const knownCandle = knownCandles[timeframe]
 
-                if (knownCandle && applyAt && applyAt == candle.openTime) {
-                    this.store.setOpenCandle(symbol, timeframe, knownCandle)
-                } else if (openTime == candle.openTime || (listingAt && listingAt == candle.openTime)) {
+                if (openTime == candle.openTime || (listingAt && listingAt == candle.openTime)) {
                     this.store.createOpenCandle(symbol, timeframe, openTime, closeTime, candle.open)
+                } else if (knownCandle && applyAt && applyAt == candle.openTime) {
+                    this.store.setOpenCandle(symbol, timeframe, knownCandle)
                 }
             }
 
@@ -80,10 +82,7 @@ export class CandleAggregate extends BaseCandleAggregate {
         this.initializingPairs.add(pair.symbol)
         this.emit('pair-init', pair, untilCandle)
 
-        const openTimes = Object.fromEntries(
-            this.timeframes.map((t) => <const>[t, this.timeframeHelper.getOpenTime(t, untilCandle.openTime)])
-        )
-
+        const openTimes = await this.getInitOpenTimes(pair.symbol, untilCandle.openTime)
         const knownUntil = this.knownCandles[pair.symbol]?.applyAt
         const until = untilCandle.openTime - 1
         const since = knownUntil ?? Math.min(...Object.values(openTimes))
@@ -101,5 +100,33 @@ export class CandleAggregate extends BaseCandleAggregate {
         this.store.active(pair.symbol)
         this.initializingPairs.delete(pair.symbol)
         this.emit('pair-initialized', pair)
+    }
+
+    protected async getCandleTimes(symbol: string, timeframe: TimeframeStr, from: number) {
+        const openTime = await this.getOpenTime(symbol, timeframe, from)
+        const closeTime = this.timeframeHelper.getCloseTime(timeframe, openTime)
+
+        return { openTime, closeTime }
+    }
+
+    protected async getInitOpenTimes(symbol: string, from: number) {
+        const result: Array<[TimeframeStr, number]> = []
+        const chunks = chunk(this.timeframes.filter((t) => t !== this.lowestTimeframe), this.helper.concurrency)
+
+        for (const timeframes of chunks) {
+            result.push(
+                ...(await Promise.all(timeframes.map(async (t) => <any>[t, await this.getOpenTime(symbol, t, from)])))
+            )
+        }
+
+        return Object.fromEntries(result)
+    }
+
+    protected async getOpenTime(symbol: string, timeframe: TimeframeStr, from: number) {
+        const lastCloseCandle = this.store.getLastCloseCandle(symbol, timeframe)
+        const knownOpenTime = lastCloseCandle?.openTime ?? this.knownCandles[symbol]?.candles[timeframe]?.openTime
+        const divideBy = knownOpenTime ?? await this.helper.getDivideBy(symbol, timeframe)
+
+        return this.timeframeHelper.getOpenTime(timeframe, from, divideBy)
     }
 }

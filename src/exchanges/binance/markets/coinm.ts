@@ -1,6 +1,6 @@
 import { CoinMClient } from 'binance'
 import { BinanceExchange } from '../exchange'
-import { Market } from '../constants'
+import { Market, defaultIntervals } from '../constants'
 import type { BinanceExchangeOptions, BinanceCoinMSymbol } from '../types'
 import type { Precision } from '../../../types'
 
@@ -9,6 +9,7 @@ export class BinanceCoinM extends BinanceExchange {
 
     protected readonly market: Market
     protected readonly restClient: CoinMClient
+    protected readonly supportedIntervals = defaultIntervals
 
     public constructor(options?: BinanceExchangeOptions) {
         super(options)

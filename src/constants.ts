@@ -1,4 +1,4 @@
-export enum Timeframe {
+export enum TimeframeEnum {
     MIN1 = '1m',
     MIN3 = '3m',
     MIN5 = '5m',

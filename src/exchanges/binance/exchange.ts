@@ -1,9 +1,10 @@
 import { isObject } from '@khangdt22/utils/object'
 import { createDeferred, poll } from '@khangdt22/utils/promise'
-import { isKlineRaw } from 'binance'
+import { isKlineRaw, type KlineInterval } from 'binance'
 import { Exchange, type GetCandlesOptions } from '../exchange'
 import type { Pair, Precision } from '../../types'
-import type { Timeframe } from '../../constants'
+import type { Timeframe } from '../../utils'
+import { toTimeframeStr } from '../../utils'
 import type { Market } from './constants'
 import { weights, getCandlesLimits } from './constants'
 import type { BinanceRestClient, BinanceExchangeInfo, BinanceSymbol, BinanceExchangeOptions, ContractInfoStream } from './types'
@@ -13,6 +14,7 @@ import { isContractInfoStreamEvent } from './utils/messages'
 export abstract class BinanceExchange extends Exchange {
     protected abstract readonly market: Market
     protected abstract readonly restClient: BinanceRestClient
+    protected abstract readonly supportedIntervals: KlineInterval[]
 
     protected exchangeInfo?: BinanceExchangeInfo
     protected exchangeInfoPromise?: Promise<BinanceExchangeInfo>
@@ -31,10 +33,6 @@ export abstract class BinanceExchange extends Exchange {
 
     public async getTimezone() {
         return this.getExchangeInfo().then(({ timezone }) => timezone)
-    }
-
-    public async getSymbolForSampleData() {
-        return this.getPairs().then((pairs) => pairs[0].symbol)
     }
 
     public async getPair(symbol: string) {
@@ -60,9 +58,10 @@ export abstract class BinanceExchange extends Exchange {
         return promise
     }
 
-    public async getCandles(symbol: string, interval: Timeframe, options: GetCandlesOptions = {}) {
+    public async getCandles(symbol: string, timeframe: Timeframe, options: GetCandlesOptions = {}) {
         const { limit = getCandlesLimits[this.market], since: startTime, until: endTime } = options
         const weight = this.getGetCandlesWeight(limit)
+        const interval = this.formatTimeframe(timeframe)
 
         const candles = await this.call(
             weight,
@@ -77,11 +76,11 @@ export abstract class BinanceExchange extends Exchange {
     }
 
     public async watchCandlesBatch(params: Array<readonly [string, Timeframe]>) {
-        return this.websocketClient.subscribe(params.map(([symbol, interval]) => `${symbol.toLowerCase()}@kline_${interval}`))
+        return this.websocketClient.subscribe(params.map(([symbol, timeframe]) => `${symbol.toLowerCase()}@kline_${this.formatTimeframe(timeframe)}`))
     }
 
     public async unwatchCandles(symbol: string, timeframe: Timeframe) {
-        return this.websocketClient.unsubscribe([`${symbol.toLowerCase()}@kline_${timeframe}`])
+        return this.websocketClient.unsubscribe([`${symbol.toLowerCase()}@kline_${this.formatTimeframe(timeframe)}`])
     }
 
     public async watchPairs() {
@@ -118,7 +117,7 @@ export abstract class BinanceExchange extends Exchange {
 
     protected onWebsocketMessage(data: any) {
         if (isKlineRaw(data)) {
-            this.emit('candle', data.s, data.k.i as Timeframe, formatWsCandle(data), data.k.x)
+            this.emit('candle', data.s, data.k.i, formatWsCandle(data), data.k.x)
         } else if (isContractInfoStreamEvent(data)) {
             this.handlePairUpdate(data)
         }
@@ -157,6 +156,16 @@ export abstract class BinanceExchange extends Exchange {
     protected abstract isPairActive(pair: BinanceSymbol): boolean
 
     protected abstract getPrecision(pair: BinanceSymbol): Precision
+
+    protected formatTimeframe(timeframe: Timeframe) {
+        const timeframeStr = toTimeframeStr(timeframe) as KlineInterval
+
+        if (!this.supportedIntervals.includes(timeframeStr)) {
+            throw new Error(`Unsupported timeframe: ${timeframe}`)
+        }
+
+        return timeframeStr
+    }
 
     protected getGetCandlesWeight(limit: number) {
         if (limit <= 100) {

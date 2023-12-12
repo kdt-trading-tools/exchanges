@@ -1,10 +1,9 @@
 import { TypedEventEmitter } from '@khangdt22/utils/event'
-import { Limiter, type LimiterEvents, consoleLogger } from '../utils'
+import { Limiter, type LimiterEvents, consoleLogger, type Timeframe, type TimeframeStr } from '../utils'
 import type { Logger, Pair, Candle } from '../types'
-import type { Timeframe } from '../constants'
 
 export type ExchangeEvents = {
-    'candle': (symbol: string, timeframe: Timeframe, candle: Candle, isClose: boolean) => void
+    'candle': (symbol: string, timeframe: TimeframeStr, candle: Candle, isClose: boolean) => void
     'pair-added': (pair: Pair) => void
     'pair-update': (pair: Pair) => void
     'pair-removed': (pair: Pair) => void
@@ -35,8 +34,6 @@ export abstract class Exchange extends TypedEventEmitter<ExchangeEvents> {
     }
 
     public abstract getTimezone(): Promise<string>
-
-    public abstract getSymbolForSampleData(): Promise<string>
 
     public abstract getPair(symbol: string): Promise<Pair | undefined>
 
