@@ -5,7 +5,7 @@ import type { Exchange, GetCandlesOptions } from '../../exchanges'
 import type { Candle, Pair } from '../../types'
 import { validateCandles, fetchCandles } from '../candles'
 import { TimeframeHelper } from '../timeframe-helper'
-import { sortTimeframes, type Timeframe, type TimeframeStr, toTimeframeStr } from '../timeframes'
+import { sortTimeframes, type Timeframe, type TimeframeStr, toTimeframeStr, parseTimeframe } from '../timeframes'
 import { TimeframeEnum } from '../../constants'
 
 export type CandlesFetcher = (e: Exchange, s: string, t: Timeframe, o?: GetCandlesOptions) => Promise<Candle[]>
@@ -30,7 +30,7 @@ export class CandleAggregateHelper {
     protected readonly inputPairs?: Array<string | Pair>
     protected readonly fetcher: CandlesFetcher
     protected readonly validateCandles: boolean
-    protected readonly divideBy: Record<string, Promise<number>> = {}
+    protected readonly baseTime: Record<string, Promise<number | undefined>> = {}
 
     public constructor(public readonly exchange: Exchange, options: CandleAggregateHelperOptions = {}) {
         this.inputPairs = options.pairs
@@ -92,8 +92,12 @@ export class CandleAggregateHelper {
         return this.fetchCandles(symbol, timeframe, { limit: 1 }).then((candles) => candles.at(0))
     }
 
-    public async getDivideBy(symbol: string, timeframe: Timeframe) {
-        return this.divideBy[`${symbol}_${timeframe}`] ??= this.getLatestOpenTime(symbol, timeframe).then((openTime) => {
+    public async getBaseTime(symbol: string, timeframe: Timeframe, helper: TimeframeHelper) {
+        return this.baseTime[`${symbol}_${timeframe}`] ??= this.getLatestOpenTime(symbol, timeframe).then((openTime) => {
+            if (!helper.isRequiredBaseTime(parseTimeframe(timeframe))) {
+                return
+            }
+
             if (isNullish(openTime)) {
                 throw new Error(`Failed to get latest open time for symbol ${symbol} (timeframe: ${timeframe})`)
             }

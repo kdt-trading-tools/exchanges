@@ -70,7 +70,7 @@ export function timeframeToMilliseconds(timeframe: Timeframe, startAt?: Date | n
     }
 
     if (!startAt) {
-        throw new Error(`Timeframe ${timeframe} requires startAt to able to convert into milliseconds`)
+        throw new Error(`Timeframe ${toTimeframeStr(timeframe)} requires startAt to able to convert into milliseconds`)
     }
 
     startAt = toDate(startAt)
@@ -83,5 +83,5 @@ export function timeframeToMilliseconds(timeframe: Timeframe, startAt?: Date | n
         return addYears(startAt, value).getTime() - startAt.getTime()
     }
 
-    throw new Error(`Timeframe ${timeframe} is not supported`)
+    throw new Error(`Timeframe ${toTimeframeStr(timeframe)} is not supported`)
 }

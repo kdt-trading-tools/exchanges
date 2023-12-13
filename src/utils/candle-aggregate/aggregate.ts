@@ -84,6 +84,7 @@ export class CandleAggregate extends BaseCandleAggregate {
 
         const openTimes = await this.getInitOpenTimes(pair.symbol, untilCandle.openTime)
         const knownUntil = this.knownCandles[pair.symbol]?.applyAt
+
         const until = untilCandle.openTime - 1
         const since = knownUntil ?? Math.min(...Object.values(openTimes))
 
@@ -125,8 +126,8 @@ export class CandleAggregate extends BaseCandleAggregate {
     protected async getOpenTime(symbol: string, timeframe: TimeframeStr, from: number) {
         const lastCloseCandle = this.store.getLastCloseCandle(symbol, timeframe)
         const knownOpenTime = lastCloseCandle?.openTime ?? this.knownCandles[symbol]?.candles[timeframe]?.openTime
-        const divideBy = knownOpenTime ?? await this.helper.getDivideBy(symbol, timeframe)
+        const baseTime = knownOpenTime ?? await this.helper.getBaseTime(symbol, timeframe, this.timeframeHelper)
 
-        return this.timeframeHelper.getOpenTime(timeframe, from, divideBy)
+        return this.timeframeHelper.getOpenTime(timeframe, from, baseTime)
     }
 }
