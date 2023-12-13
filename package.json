@@ -1,6 +1,6 @@
 {
     "name": "@kdt-trading-tools/exchanges",
-    "version": "0.0.9",
+    "version": "0.1.0",
     "description": "A library for help to easy interact with any crypto exchanges",
     "license": "MIT",
     "author": "Diep Dang <khangdt310722@gmail.com>",
