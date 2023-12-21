@@ -92,21 +92,8 @@ export class CandleAggregateHelper {
         return this.fetchCandles(symbol, timeframe, { limit: 1 }).then((candles) => candles.at(0))
     }
 
-    public async getBaseTime(symbol: string, timeframe: Timeframe, helper: TimeframeHelper) {
-        const timeframeObj = parseTimeframe(timeframe)
-        const timeframeStr = toTimeframeStr(timeframeObj)
-
-        return this.baseTime[`${symbol}_${timeframeStr}`] ??= this.getLatestOpenTime(symbol, timeframe).then((openTime) => {
-            if (!helper.isRequiredBaseTime(timeframeObj)) {
-                return
-            }
-
-            if (isNullish(openTime)) {
-                throw new Error(`Failed to get latest open time for symbol ${symbol} (timeframe: ${timeframeStr})`)
-            }
-
-            return openTime
-        })
+    public async getBaseTime(symbol: string, timeframe: TimeframeStr, helper: TimeframeHelper) {
+        return this.baseTime[`${symbol}_${timeframe}`] ??= this.#getBaseTime(symbol, timeframe, helper)
     }
 
     protected async getPair(symbol: string | Pair) {
@@ -121,5 +108,21 @@ export class CandleAggregateHelper {
         }
 
         return symbol
+    }
+
+    async #getBaseTime(symbol: string, timeframe: TimeframeStr, helper: TimeframeHelper): Promise<number | undefined> {
+        const timeframeObj = parseTimeframe(timeframe)
+
+        if (!helper.isRequiredBaseTime(timeframeObj)) {
+            return
+        }
+
+        return this.getLatestOpenTime(symbol, timeframe).then((openTime) => {
+            if (isNullish(openTime)) {
+                throw new Error(`Failed to get latest open time for symbol ${symbol} (timeframe: ${timeframe})`)
+            }
+
+            return openTime
+        })
     }
 }
