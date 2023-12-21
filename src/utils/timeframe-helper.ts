@@ -90,6 +90,10 @@ export class TimeframeHelper {
     }
 
     public isRequiredBaseTime(input: TimeframeObj) {
+        if (input.value === 1) {
+            return false
+        }
+
         return this.isDayUnit(input) || this.isWeekUnit(input) || this.isMonthUnit(input) || this.isYearUnit(input)
     }
 
