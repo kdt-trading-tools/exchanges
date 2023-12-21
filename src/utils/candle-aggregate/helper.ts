@@ -96,6 +96,10 @@ export class CandleAggregateHelper {
         return this.baseTime[`${symbol}_${timeframe}`] ??= this.#getBaseTime(symbol, timeframe, helper)
     }
 
+    public removeBaseTime(symbol: string, timeframe: TimeframeStr) {
+        delete this.baseTime[`${symbol}_${timeframe}`]
+    }
+
     protected async getPair(symbol: string | Pair) {
         if (typeof symbol === 'string') {
             const pair = await this.exchange.getPair(symbol)

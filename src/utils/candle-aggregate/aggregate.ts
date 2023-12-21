@@ -126,6 +126,11 @@ export class CandleAggregate extends BaseCandleAggregate {
     protected async getOpenTime(symbol: string, timeframe: TimeframeStr, from: number) {
         const lastCloseCandle = this.store.getLastCloseCandle(symbol, timeframe)
         const knownOpenTime = lastCloseCandle?.openTime ?? this.knownCandles[symbol]?.candles[timeframe]?.openTime
+
+        if (knownOpenTime) {
+            this.helper.removeBaseTime(symbol, timeframe)
+        }
+
         const baseTime = knownOpenTime ?? await this.helper.getBaseTime(symbol, timeframe, this.timeframeHelper)
 
         return this.timeframeHelper.getOpenTime(timeframe, from, baseTime)
