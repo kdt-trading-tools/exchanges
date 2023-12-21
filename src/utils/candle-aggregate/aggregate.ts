@@ -94,7 +94,7 @@ export class CandleAggregate extends BaseCandleAggregate {
             const listingAt = candles.length > 0 && candles[0].openTime > since ? candles[0].openTime : undefined
 
             for (const candle of candles) {
-                this.aggregate(pair, candle, true, { aggregateFrom: openTimes, listingAt })
+                await this.aggregate(pair, candle, true, { aggregateFrom: openTimes, listingAt })
             }
         }
 
