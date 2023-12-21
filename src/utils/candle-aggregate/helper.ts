@@ -69,7 +69,7 @@ export class CandleAggregateHelper {
             try {
                 validateCandles(candles, validateSince ? since : undefined, until)
             } catch (error) {
-                throw new Error(`Failed to validate candles for symbol ${symbol} (timeframe: ${timeframe}` + (isNullish(since) ? '' : `, since: ${since}`) + (isNullish(until) ? '' : `, until: ${until}`) + ')', { cause: error })
+                throw new Error(`Failed to validate candles for symbol ${symbol} (timeframe: ${toTimeframeStr(timeframe)}` + (isNullish(since) ? '' : `, since: ${since}`) + (isNullish(until) ? '' : `, until: ${until}`) + ')', { cause: error })
             }
         }
 
@@ -93,13 +93,16 @@ export class CandleAggregateHelper {
     }
 
     public async getBaseTime(symbol: string, timeframe: Timeframe, helper: TimeframeHelper) {
-        return this.baseTime[`${symbol}_${timeframe}`] ??= this.getLatestOpenTime(symbol, timeframe).then((openTime) => {
-            if (!helper.isRequiredBaseTime(parseTimeframe(timeframe))) {
+        const timeframeObj = parseTimeframe(timeframe)
+        const timeframeStr = toTimeframeStr(timeframeObj)
+
+        return this.baseTime[`${symbol}_${timeframeStr}`] ??= this.getLatestOpenTime(symbol, timeframe).then((openTime) => {
+            if (!helper.isRequiredBaseTime(timeframeObj)) {
                 return
             }
 
             if (isNullish(openTime)) {
-                throw new Error(`Failed to get latest open time for symbol ${symbol} (timeframe: ${timeframe})`)
+                throw new Error(`Failed to get latest open time for symbol ${symbol} (timeframe: ${timeframeStr})`)
             }
 
             return openTime

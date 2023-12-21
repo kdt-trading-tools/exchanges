@@ -161,7 +161,7 @@ export abstract class BinanceExchange extends Exchange {
         const timeframeStr = toTimeframeStr(timeframe) as KlineInterval
 
         if (!this.supportedIntervals.includes(timeframeStr)) {
-            throw new Error(`Unsupported timeframe: ${timeframe}`)
+            throw new Error(`Unsupported timeframe: ${timeframeStr}`)
         }
 
         return timeframeStr
