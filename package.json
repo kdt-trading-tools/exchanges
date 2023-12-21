@@ -50,7 +50,7 @@
         "@khangdt22/utils": "latest",
         "binance": "^2.8.15",
         "bottleneck": "^2.19.5",
-        "date-fns": "^3.0.3",
+        "date-fns": "2.30.0",
         "date-fns-tz": "^2.0.0",
         "p-queue": "^8.0.1"
     },
