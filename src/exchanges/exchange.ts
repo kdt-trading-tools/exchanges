@@ -8,6 +8,7 @@ export type ExchangeEvents = {
     'pair-update': (pair: Pair) => void
     'pair-removed': (pair: Pair) => void
     'rate-limit-exceeded': LimiterEvents['rate-limit-exceeded']
+    'bid-ask': (symbol: string, bid: number, ask: number) => void
 }
 
 export interface ExchangeOptions {
@@ -48,6 +49,8 @@ export abstract class Exchange extends TypedEventEmitter<ExchangeEvents> {
     public abstract unwatchCandles(symbol: string, timeframe: Timeframe): Promise<void>
 
     public abstract watchPairs(): Promise<() => Promise<void>>
+
+    public abstract watchBidAsk(symbol: string): Promise<() => Promise<void>>
 
     public async getActivePairs() {
         return this.getPairs().then((pairs) => pairs.filter((p) => p.isActive))

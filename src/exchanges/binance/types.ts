@@ -21,3 +21,11 @@ export interface ContractInfoStream {
     s: string
     cs: string
 }
+
+export interface OrderBookTickerStream {
+    s: string
+    b: string
+    B: string
+    a: string
+    A: string
+}

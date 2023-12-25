@@ -9,7 +9,7 @@ import type { Market } from './constants'
 import { weights, getCandlesLimits } from './constants'
 import type { BinanceRestClient, BinanceExchangeInfo, BinanceSymbol, BinanceExchangeOptions, ContractInfoStream } from './types'
 import { formatCandle, BinanceWebsocketClient, formatWsCandle } from './utils'
-import { isContractInfoStreamEvent } from './utils/messages'
+import { isContractInfoStreamEvent, isOrderBookTickerStreamEvent } from './utils/messages'
 
 export abstract class BinanceExchange extends Exchange {
     protected abstract readonly market: Market
@@ -115,11 +115,17 @@ export abstract class BinanceExchange extends Exchange {
         }
     }
 
+    public async watchBidAsk(symbol: string) {
+        return this.websocketClient.subscribe([`${symbol.toLowerCase()}@bookTicker`])
+    }
+
     protected onWebsocketMessage(data: any) {
         if (isKlineRaw(data)) {
             this.emit('candle', data.s, data.k.i, formatWsCandle(data), data.k.x)
         } else if (isContractInfoStreamEvent(data)) {
             this.handlePairUpdate(data)
+        } else if (isOrderBookTickerStreamEvent(data)) {
+            this.emit('bid-ask', data.s, Number(data.b), Number(data.a))
         }
     }
 
