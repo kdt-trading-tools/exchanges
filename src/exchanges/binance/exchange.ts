@@ -123,6 +123,10 @@ export abstract class BinanceExchange extends Exchange {
         return this.websocketClient.subscribe(symbols.map((s) => `${s.toLowerCase()}@bookTicker`))
     }
 
+    public async unwatchBidAsk(symbol: string) {
+        return this.websocketClient.unsubscribe([`${symbol.toLowerCase()}@bookTicker`])
+    }
+
     protected onWebsocketMessage(data: any) {
         if (isKlineRaw(data)) {
             this.emit('candle', data.s, data.k.i, formatWsCandle(data), data.k.x)
