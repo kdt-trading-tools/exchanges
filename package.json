@@ -10,7 +10,6 @@
         "email": "khangdt310722@gmail.com",
         "url": "https://github.com/kdt-trading-tools/exchanges/issues"
     },
-    "type": "module",
     "files": [
         "dist",
         "src"
@@ -18,28 +17,26 @@
     "engines": {
         "node": ">=18.0.0"
     },
+    "type": "module",
     "publishConfig": {
         "access": "public"
     },
     "main": "dist/index.js",
-    "types": "dist/index.d.ts",
+    "types": "dist/types/index.d.ts",
     "exports": {
         ".": {
-            "import": {
-                "default": "./dist/index.js",
-                "types": "./dist/index.d.ts"
-            },
-            "require": {
-                "default": "./dist/index.cjs",
-                "types": "./dist/index.d.cts"
-            }
+            "default": "./dist/index.js",
+            "require": "./dist/index.cjs",
+            "types": "./dist/types/index.d.ts"
         }
     },
     "scripts": {
-        "build": "tsc && tsup",
+        "build": "rimraf dist && tsup && tsc --project ./tsconfig.build.json",
+        "test": "vitest",
+        "coverage": "vitest run --coverage",
         "release": "np --no-yarn --no-release-draft --yolo --message='chore: release v%s'",
         "up": "ncu -i",
-        "lint": "pnpm prettier '**/*.!(js|jsx|cjs|mjs|ts|tsx|cts|mts|d.ts|vue)' && pnpm eslint .",
+        "lint": "pnpm prettier '*.!(js|jsx|cjs|cjsx|mjs|mjsx|ts|tsx|cts|ctsx|mts|mtsx|d.ts|vue)' && pnpm eslint .",
         "eslint": "eslint --ignore-path .gitignore --fix",
         "prettier": "prettier --ignore-path .gitignore --ignore-unknown --write",
         "preinstall": "npx only-allow pnpm",
@@ -47,7 +44,7 @@
         "prepublishOnly": "pnpm build"
     },
     "dependencies": {
-        "@khangdt22/utils": "latest",
+        "@khangdt22/utils": "^0.0.20",
         "binance": "^2.8.15",
         "bottleneck": "^2.19.5",
         "date-fns": "2.30.0",
@@ -67,10 +64,12 @@
         "npm-check-updates": "latest",
         "only-allow": "latest",
         "prettier": "latest",
+        "rimraf": "latest",
         "simple-git-hooks": "latest",
         "ts-node": "latest",
         "tsup": "latest",
-        "typescript": "latest"
+        "typescript": "latest",
+        "vitest": "latest"
     },
     "commitlint": {
         "extends": "@commitlint/config-conventional"
@@ -79,12 +78,12 @@
         "extends": "@khangdt22"
     },
     "lint-staged": {
-        "*.{js,jsx,cjs,mjs,ts,tsx,cts,mts,vue}": "pnpm eslint",
-        "*.!(js|jsx|cjs|mjs|ts|tsx|cts|mts|d.ts|vue)": "pnpm prettier"
+        "*.{js,jsx,cjs,cjsx,mjs,mjsx,ts,tsx,cts,ctsx,mts,mtsx,vue}": "pnpm eslint",
+        "*.!(js|jsx|cjs|cjsx|mjs|mjsx|ts|tsx|cts|ctsx|mts|mtsx|d.ts|vue)": "pnpm prettier"
     },
     "prettier": "@khangdt22/prettier-config",
     "simple-git-hooks": {
         "commit-msg": "npx --no -- commitlint --edit ${1}",
-        "pre-commit": "npx tsc --noEmit && npx lint-staged"
+        "pre-commit": "npx lint-staged"
     }
 }

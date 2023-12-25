@@ -1,28 +1,7 @@
 {
     "compilerOptions": {
-        "allowSyntheticDefaultImports": true,
-        "baseUrl": ".",
-        "emitDecoratorMetadata": true,
-        "esModuleInterop": true,
-        "experimentalDecorators": true,
-        "forceConsistentCasingInFileNames": true,
-        "isolatedModules": true,
-        "lib": ["ES2022", "DOM"],
-        "module": "ES2022",
-        "moduleResolution": "Node",
-        "noEmit": true,
-        "noFallthroughCasesInSwitch": true,
-        "noImplicitAny": false,
-        "noImplicitOverride": true,
-        "noImplicitReturns": true,
-        "noUnusedLocals": true,
-        "noUnusedParameters": true,
-        "resolveJsonModule": true,
-        "skipLibCheck": true,
-        "strict": true,
-        "target": "ES2022",
-        "useDefineForClassFields": true,
-        "verbatimModuleSyntax": true
+        "incremental": false
     },
-    "exclude": ["dist/**", "node_modules/**"]
+    "extends": "./tsconfig.base.json",
+    "include": ["**/*.ts"]
 }
