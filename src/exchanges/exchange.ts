@@ -52,6 +52,8 @@ export abstract class Exchange extends TypedEventEmitter<ExchangeEvents> {
 
     public abstract watchBidAsk(symbol: string): Promise<() => Promise<void>>
 
+    public abstract watchBidAskBatch(symbols: string[]): Promise<() => Promise<void>>
+
     public async getActivePairs() {
         return this.getPairs().then((pairs) => pairs.filter((p) => p.isActive))
     }

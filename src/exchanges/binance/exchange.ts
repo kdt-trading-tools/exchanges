@@ -116,7 +116,11 @@ export abstract class BinanceExchange extends Exchange {
     }
 
     public async watchBidAsk(symbol: string) {
-        return this.websocketClient.subscribe([`${symbol.toLowerCase()}@bookTicker`])
+        return this.watchBidAskBatch([symbol])
+    }
+
+    public async watchBidAskBatch(symbols: string[]) {
+        return this.websocketClient.subscribe(symbols.map((s) => `${s.toLowerCase()}@bookTicker`))
     }
 
     protected onWebsocketMessage(data: any) {
