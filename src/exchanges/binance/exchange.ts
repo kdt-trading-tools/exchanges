@@ -1,6 +1,8 @@
 import { isObject } from '@khangdt22/utils/object'
 import { createDeferred, poll } from '@khangdt22/utils/promise'
-import { isKlineRaw, type KlineInterval } from 'binance'
+import { isKlineRaw, type KlineInterval, type SymbolOrderBookTicker } from 'binance'
+import { wrap } from '@khangdt22/utils/array'
+import { isNullish } from '@khangdt22/utils/condition'
 import { Exchange, type GetCandlesOptions } from '../exchange'
 import type { Pair, Precision } from '../../types'
 import type { Timeframe } from '../../utils'
@@ -71,6 +73,14 @@ export abstract class BinanceExchange extends Exchange {
         return candles.map((candle) => formatCandle(candle))
     }
 
+    public async getBidAsk(symbols?: string | string[]) {
+        if (!Array.isArray(symbols) && !isNullish(symbols)) {
+            return { [symbols]: await this.getBidAskSingleSymbol(symbols) }
+        }
+
+        return this.getBidAskMultipleSymbols(symbols)
+    }
+
     public async watchCandles(symbol: string, timeframe: Timeframe) {
         return this.watchCandlesBatch([[symbol, timeframe]])
     }
@@ -125,6 +135,28 @@ export abstract class BinanceExchange extends Exchange {
 
     public async unwatchBidAsk(symbol: string) {
         return this.websocketClient.unsubscribe([`${symbol.toLowerCase()}@bookTicker`])
+    }
+
+    protected async getBidAskMultipleSymbols(symbols?: string[]) {
+        const weight = weights[this.market].getBidAskMultiple
+
+        const prices = await this.call(weight, async () => this.restClient.getSymbolOrderBookTicker().then((r) => (
+            wrap(r).map((prices) => [prices.symbol, this.formatBidAskResult(prices)] as const)
+        )))
+
+        return Object.fromEntries(prices.filter(([symbol]) => isNullish(symbols) || symbols.includes(symbol)))
+    }
+
+    protected async getBidAskSingleSymbol(symbol: string) {
+        const weight = weights[this.market].getBidAsk
+
+        return this.call(weight, async () => this.restClient.getSymbolOrderBookTicker({ symbol }).then((r) => (
+            this.formatBidAskResult(Array.isArray(r) ? r[0] : r)
+        )))
+    }
+
+    protected formatBidAskResult(result: SymbolOrderBookTicker) {
+        return [Number(result.bidPrice), Number(result.askPrice)] as [bid: number, ask: number]
     }
 
     protected onWebsocketMessage(data: any) {

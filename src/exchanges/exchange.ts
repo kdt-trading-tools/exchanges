@@ -42,6 +42,8 @@ export abstract class Exchange extends TypedEventEmitter<ExchangeEvents> {
 
     public abstract getCandles(symbol: string, timeframe: Timeframe, options?: GetCandlesOptions): Promise<Candle[]>
 
+    public abstract getBidAsk(symbols?: string | string[]): Promise<Record<string, [bid: number, ask: number]>>
+
     public abstract watchCandles(symbol: string, timeframe: Timeframe): Promise<() => Promise<void>>
 
     public abstract watchCandlesBatch(params: Array<readonly [string, Timeframe]>): Promise<() => Promise<void>>

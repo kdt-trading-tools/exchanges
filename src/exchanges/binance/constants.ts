@@ -22,6 +22,8 @@ export const weights: Record<Market, Record<string, number>> = {
         getCandles100: 2,
         getCandles500: 2,
         getCandles1000: 2,
+        getBidAsk: 2,
+        getBidAskMultiple: 4,
     },
     [Market.USDM]: {
         exchangeInfo: 1,
@@ -29,6 +31,8 @@ export const weights: Record<Market, Record<string, number>> = {
         getCandles100: 2,
         getCandles500: 5,
         getCandles1000: 10,
+        getBidAsk: 2,
+        getBidAskMultiple: 5,
     },
     [Market.COINM]: {
         exchangeInfo: 1,
@@ -36,5 +40,7 @@ export const weights: Record<Market, Record<string, number>> = {
         getCandles100: 2,
         getCandles500: 5,
         getCandles1000: 10,
+        getBidAsk: 2,
+        getBidAskMultiple: 5,
     },
 }
