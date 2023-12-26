@@ -4,9 +4,8 @@ import { isKlineRaw, type KlineInterval, type SymbolOrderBookTicker } from 'bina
 import { wrap } from '@khangdt22/utils/array'
 import { isNullish } from '@khangdt22/utils/condition'
 import { Exchange, type GetCandlesOptions } from '../exchange'
-import type { Pair, Precision } from '../../types'
-import type { Timeframe } from '../../utils'
-import { toTimeframeStr } from '../../utils'
+import type { Pair, Precision, PriceType } from '../../types'
+import { type Timeframe, toPrice, toTimeframeStr } from '../../utils'
 import type { Market } from './constants'
 import { weights, getCandlesLimits } from './constants'
 import type { BinanceRestClient, BinanceExchangeInfo, BinanceSymbol, BinanceExchangeOptions, ContractInfoStream } from './types'
@@ -156,7 +155,7 @@ export abstract class BinanceExchange extends Exchange {
     }
 
     protected formatBidAskResult(result: SymbolOrderBookTicker) {
-        return [Number(result.bidPrice), Number(result.askPrice)] as [bid: number, ask: number]
+        return [toPrice(result.bidPrice), toPrice(result.askPrice)] as [bid: PriceType, ask: PriceType]
     }
 
     protected onWebsocketMessage(data: any) {
@@ -165,7 +164,7 @@ export abstract class BinanceExchange extends Exchange {
         } else if (isContractInfoStreamEvent(data)) {
             this.handlePairUpdate(data)
         } else if (isOrderBookTickerStreamEvent(data)) {
-            this.emit('bid-ask', data.s, Number(data.b), Number(data.a))
+            this.emit('bid-ask', data.s, toPrice(data.b), toPrice(data.a))
         }
     }
 

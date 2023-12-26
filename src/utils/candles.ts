@@ -1,15 +1,20 @@
 import { last } from '@khangdt22/utils/array'
 import { isNullish } from '@khangdt22/utils/condition'
+import type { Numberish } from '@khangdt22/utils/number'
 import type { Candle } from '../types'
 import type { Exchange, GetCandlesOptions } from '../exchanges'
 import type { Timeframe } from './timeframes'
+import { toPrice, toQuantity } from './number'
 
 export function isContinuous(current: Candle, next: Candle) {
     return current.closeTime + 1 === next.openTime
 }
 
-export function createCandle(openTime: number, closeTime: number, open: number): Candle {
-    return { openTime, closeTime, open, high: open, low: open, close: open, volume: 0 }
+export function createCandle(openTime: number, closeTime: number, open: Numberish): Candle {
+    const price = toPrice(open)
+    const volume = toQuantity(0)
+
+    return { openTime, closeTime, open: price, high: price, low: price, close: price, volume }
 }
 
 export function ensureContinuous(candles: Candle[], onlyClose = false) {

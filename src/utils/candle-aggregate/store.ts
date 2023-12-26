@@ -1,7 +1,8 @@
 import PQueue from 'p-queue'
+import type { Numberish } from '@khangdt22/utils/number'
 import type { Candle } from '../../types'
 import { createCandle, isContinuous } from '../candles'
-import { round } from '../number'
+import { round, add, max, min } from '../number'
 import type { TimeframeStr } from '../timeframes'
 
 export interface CandleAggregateStoreItem {
@@ -36,11 +37,11 @@ export class CandleAggregateStore {
         }
 
         const aggregateCandle = { ...openCandle }
-        const volume = aggregateCandle.volume + candle.volume
+        const volume = add(aggregateCandle.volume, candle.volume)
         const isCandleClose = isClose && candle.closeTime === aggregateCandle.closeTime
 
-        aggregateCandle.high = Math.max(aggregateCandle.high, candle.high)
-        aggregateCandle.low = Math.min(aggregateCandle.low, candle.low)
+        aggregateCandle.high = max(aggregateCandle.high, candle.high)
+        aggregateCandle.low = min(aggregateCandle.low, candle.low)
         aggregateCandle.close = candle.close
         aggregateCandle.volume = precision ? round(volume, precision) : volume
 
@@ -121,7 +122,7 @@ export class CandleAggregateStore {
         return this.get(symbol).openCandles[timeframe] = candle
     }
 
-    public createOpenCandle(symbol: string, tf: TimeframeStr, openTime: number, closeTime: number, price: number) {
+    public createOpenCandle(symbol: string, tf: TimeframeStr, openTime: number, closeTime: number, price: Numberish) {
         return this.setOpenCandle(symbol, tf, createCandle(openTime, closeTime, price))
     }
 

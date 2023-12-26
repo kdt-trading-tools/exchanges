@@ -1,6 +1,6 @@
 import { TypedEventEmitter } from '@khangdt22/utils/event'
 import { Limiter, type LimiterEvents, consoleLogger, type Timeframe, type TimeframeStr } from '../utils'
-import type { Logger, Pair, Candle } from '../types'
+import type { Logger, Pair, Candle, PriceType } from '../types'
 
 export type ExchangeEvents = {
     'candle': (symbol: string, timeframe: TimeframeStr, candle: Candle, isClose: boolean) => void
@@ -8,7 +8,7 @@ export type ExchangeEvents = {
     'pair-update': (pair: Pair) => void
     'pair-removed': (pair: Pair) => void
     'rate-limit-exceeded': LimiterEvents['rate-limit-exceeded']
-    'bid-ask': (symbol: string, bid: number, ask: number) => void
+    'bid-ask': (symbol: string, bid: PriceType, ask: PriceType) => void
 }
 
 export interface ExchangeOptions {
@@ -42,7 +42,7 @@ export abstract class Exchange extends TypedEventEmitter<ExchangeEvents> {
 
     public abstract getCandles(symbol: string, timeframe: Timeframe, options?: GetCandlesOptions): Promise<Candle[]>
 
-    public abstract getBidAsk(symbols?: string | string[]): Promise<Record<string, [bid: number, ask: number]>>
+    public abstract getBidAsk(symbols?: string | string[]): Promise<Record<string, [bid: PriceType, ask: PriceType]>>
 
     public abstract watchCandles(symbol: string, timeframe: Timeframe): Promise<() => Promise<void>>
 

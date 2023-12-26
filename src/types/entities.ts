@@ -1,11 +1,15 @@
+export type PriceType = string
+
+export type QuantityType = string
+
 export interface Candle {
     openTime: number
     closeTime: number
-    open: number
-    high: number
-    low: number
-    close: number
-    volume: number
+    open: PriceType
+    high: PriceType
+    low: PriceType
+    close: PriceType
+    volume: QuantityType
 }
 
 export interface Precision {

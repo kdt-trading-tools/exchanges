@@ -49,6 +49,7 @@
         "bottleneck": "^2.19.5",
         "date-fns": "2.30.0",
         "date-fns-tz": "^2.0.0",
+        "mathjs": "^12.2.1",
         "p-queue": "^8.0.1"
     },
     "devDependencies": {
