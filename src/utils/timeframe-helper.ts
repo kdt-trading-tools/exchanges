@@ -4,14 +4,12 @@ import { isNullish } from '@khangdt22/utils/condition'
 import type { Timeframe, TimeframeUnit as Unit, TimeframeObj } from './timeframes'
 import { timeframeToMilliseconds, parseTimeframe, toTimeframeStr } from './timeframes'
 
-type WeekValue = 0 | 1 | 2 | 3 | 4 | 5 | 6
-
 export interface TimeframeHelperOptions {
     timezone?: string
-    weekStartsOn?: WeekValue
+    weekStartsOn?: Day
 }
 
-type StartFn = (date: Date | number, options?: { weekStartsOn?: WeekValue }) => Date
+type StartFn = (date: Date | number, options?: { weekStartsOn?: Day }) => Date
 type GetFn = (date: Date) => number
 type SetFn = (date: Date, value: number) => void
 type AddOrSubFn = (date: Date | number, value: number) => Date
@@ -54,7 +52,7 @@ export class TimeframeHelper {
     }
 
     protected readonly timezone: string
-    protected readonly weekStartsOn: WeekValue
+    protected readonly weekStartsOn: Day
 
     public constructor(options: TimeframeHelperOptions = {}) {
         this.timezone = options.timezone ?? 'UTC'
