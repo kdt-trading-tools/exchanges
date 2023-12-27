@@ -1,14 +1,60 @@
 import type { Kline, WsMessageKlineRaw, NewSpotOrderParams, OrderResponseResult, OrderStatus as OrderStatusType } from 'binance'
 import { isKeyOf } from '@khangdt22/utils/object'
-import type { Candle, Order, OrderResponse } from '../../../types'
+import type { Candle, Order, OrderResponse, OrderUpdate } from '../../../types'
 import { toPrice, toQuantity } from '../../../utils'
-import { OrderStatus } from '../../../constants'
+import { OrderStatus, OrderSide, OrderType } from '../../../constants'
+import type { OrderUpdateStream } from '../types'
+
+export const formatWsOrderUpdate = (data: OrderUpdateStream): OrderUpdate => ({
+    symbol: data.s,
+    side: formatOrderSide(data.S),
+    type: formatOrderType(data.o),
+    quantity: toQuantity(data.q),
+    price: toPrice(data.p),
+    stopPrice: toPrice(data.P),
+    orderId: data.i.toString(),
+    timestamp: data.T,
+    status: formatOrderStatus(data.X),
+    error: data.r,
+})
 
 export const formatSpotOrderResponse = (response: OrderResponseResult): OrderResponse => ({
     orderId: response.orderId.toString(),
     status: formatOrderStatus(response.status),
     timestamp: response.transactTime,
 })
+
+export const formatOrderType = (type: string): OrderType => {
+    switch (type) {
+        case 'LIMIT':
+            return OrderType.LIMIT
+        case 'MARKET':
+            return OrderType.MARKET
+        case 'STOP_LOSS':
+            return OrderType.STOP_LOSS
+        case 'STOP_LOSS_LIMIT':
+            return OrderType.STOP_LOSS_LIMIT
+        case 'TAKE_PROFIT':
+            return OrderType.TAKE_PROFIT
+        case 'TAKE_PROFIT_LIMIT':
+            return OrderType.TAKE_PROFIT_LIMIT
+        case 'LIMIT_MAKER':
+            return OrderType.LIMIT_MAKER
+        default:
+            throw new Error(`Unknown order type: ${type}`)
+    }
+}
+
+export const formatOrderSide = (side: string): OrderSide => {
+    switch (side) {
+        case 'BUY':
+            return OrderSide.BUY
+        case 'SELL':
+            return OrderSide.SELL
+        default:
+            throw new Error(`Unknown order side: ${side}`)
+    }
+}
 
 export const formatOrderStatus = (status: OrderStatusType): OrderStatus => {
     switch (status) {

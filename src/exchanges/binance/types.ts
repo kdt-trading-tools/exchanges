@@ -1,4 +1,4 @@
-import type { MainClient, USDMClient, CoinMClient, ExchangeInfo, FuturesExchangeInfo, SymbolExchangeInfo, FuturesSymbolExchangeInfo, ContractStatus } from 'binance'
+import type { MainClient, USDMClient, CoinMClient, ExchangeInfo, FuturesExchangeInfo, SymbolExchangeInfo, FuturesSymbolExchangeInfo, ContractStatus, OrderSide, OrderType, OrderStatus } from 'binance'
 import type { ExchangeOptions } from '../exchange'
 import type { BinanceWebsocketClientOptions } from './utils'
 
@@ -30,4 +30,18 @@ export interface OrderBookTickerStream {
     B: string
     a: string
     A: string
+}
+
+export interface OrderUpdateStream {
+    e: 'executionReport'
+    s: string
+    S: OrderSide
+    o: OrderType
+    q: string
+    p: string
+    P: string
+    X: OrderStatus
+    r: string
+    i: number
+    T: number
 }

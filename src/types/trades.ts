@@ -34,3 +34,13 @@ export interface OrderResponse {
     timestamp: number
     status: OrderStatus
 }
+
+export type OrderUpdate = OrderResponse & {
+    symbol: string
+    side: OrderSide
+    type: OrderType
+    quantity: QuantityType
+    price: PriceType
+    stopPrice: PriceType
+    error: string
+}

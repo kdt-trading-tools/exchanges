@@ -28,6 +28,20 @@ export class BinanceSpot extends BinanceExchange {
         })
     }
 
+    public override async watchAccount() {
+        const weight = weights[this.market].getListenKey
+        const { listenKey } = await this.call(weight, async () => this.restClient.getSpotUserDataListenKey())
+        const timer = setInterval(() => this.keepAliveListenKey(listenKey), 30 * 60 * 1000)
+        const unwatch = await this.websocketClient.subscribe([listenKey])
+
+        return async () => {
+            clearInterval(timer)
+
+            await unwatch()
+            await this.closeListenKey(listenKey)
+        }
+    }
+
     public async createTestOrder(order: Order) {
         await this.call(
             weights[this.market].createTestOrder,
@@ -84,6 +98,18 @@ export class BinanceSpot extends BinanceExchange {
         ))
 
         return Object.fromEntries(result)
+    }
+
+    protected async closeListenKey(listenKey: string) {
+        const weight = weights[this.market].closeListenKey
+
+        return this.call(weight, async () => this.restClient.closeSpotUserDataListenKey(listenKey))
+    }
+
+    protected async keepAliveListenKey(listenKey: string) {
+        const weight = weights[this.market].keepAliveListenKey
+
+        return this.call(weight, async () => this.restClient.keepAliveSpotUserDataListenKey(listenKey))
     }
 
     protected getPrecision({ filters }: SymbolExchangeInfo): Precision {

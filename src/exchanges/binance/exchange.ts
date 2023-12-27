@@ -9,8 +9,8 @@ import { type Timeframe, toPrice, toTimeframeStr } from '../../utils'
 import type { Market } from './constants'
 import { weights, getCandlesLimits } from './constants'
 import type { BinanceRestClient, BinanceExchangeInfo, BinanceSymbol, BinanceExchangeOptions, ContractInfoStream } from './types'
-import { formatCandle, BinanceWebsocketClient, formatWsCandle } from './utils'
-import { isContractInfoStreamEvent, isOrderBookTickerStreamEvent } from './utils/messages'
+import { formatCandle, BinanceWebsocketClient, formatWsCandle, formatWsOrderUpdate } from './utils'
+import { isContractInfoStreamEvent, isOrderBookTickerStreamEvent, isOrderUpdateStreamEvent, isBalanceUpdateStreamEvent, isAccountUpdateStreamEvent } from './utils/messages'
 
 export abstract class BinanceExchange extends Exchange {
     protected abstract readonly market: Market
@@ -85,6 +85,10 @@ export abstract class BinanceExchange extends Exchange {
     }
 
     public async getTradingFees(): Promise<Record<string, TradingFee>> {
+        throw new Error('Not supported')
+    }
+
+    public async watchAccount(): Promise<() => Promise<void>> {
         throw new Error('Not supported')
     }
 
@@ -173,6 +177,14 @@ export abstract class BinanceExchange extends Exchange {
             this.handlePairUpdate(data)
         } else if (isOrderBookTickerStreamEvent(data)) {
             this.emit('bid-ask', data.s, toPrice(data.b), toPrice(data.a))
+        } else if (isOrderUpdateStreamEvent(data)) {
+            this.emit('order', formatWsOrderUpdate(data))
+        } else if (isBalanceUpdateStreamEvent(data)) {
+            this.emit('balance-change', data.a, toPrice(data.d))
+        } else if (isAccountUpdateStreamEvent(data)) {
+            for (const { a, f } of data.B) {
+                this.emit('balance', a, toPrice(f))
+            }
         }
     }
 

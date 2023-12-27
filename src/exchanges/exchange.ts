@@ -1,6 +1,6 @@
 import { TypedEventEmitter } from '@khangdt22/utils/event'
 import { Limiter, type LimiterEvents, consoleLogger, type Timeframe, type TimeframeStr } from '../utils'
-import type { Logger, Pair, Candle, PriceType, TradingFee, Order, OrderResponse } from '../types'
+import type { Logger, Pair, Candle, PriceType, TradingFee, Order, OrderResponse, OrderUpdate } from '../types'
 import type { OrderStatus } from '../constants'
 
 export type ExchangeEvents = {
@@ -10,6 +10,9 @@ export type ExchangeEvents = {
     'pair-removed': (pair: Pair) => void
     'rate-limit-exceeded': LimiterEvents['rate-limit-exceeded']
     'bid-ask': (symbol: string, bid: PriceType, ask: PriceType) => void
+    'order': (order: OrderUpdate) => void
+    'balance': (asset: string, balance: PriceType) => void
+    'balance-change': (asset: string, change: PriceType) => void
 }
 
 export interface ExchangeOptions {
@@ -70,6 +73,8 @@ export abstract class Exchange extends TypedEventEmitter<ExchangeEvents> {
     public abstract watchBidAskBatch(symbols: string[]): Promise<() => Promise<void>>
 
     public abstract unwatchBidAsk(symbol: string): Promise<void>
+
+    public abstract watchAccount(): Promise<() => Promise<void>>
 
     public async getActivePairs() {
         return this.getPairs().then((pairs) => pairs.filter((p) => p.isActive))
