@@ -1,9 +1,10 @@
 import type { FuturesSymbolExchangeInfo } from 'binance'
 import { USDMClient } from 'binance'
 import { BinanceExchange } from '../exchange'
-import { Market, defaultIntervals } from '../constants'
+import { Market, defaultIntervals, weights } from '../constants'
 import type { BinanceExchangeOptions } from '../types'
 import type { Precision } from '../../../types'
+import { toMathType, toPrice } from '../../../utils'
 
 export class BinanceUSDM extends BinanceExchange {
     public readonly name: string = 'Binance USDM Futures'
@@ -22,6 +23,17 @@ export class BinanceUSDM extends BinanceExchange {
             api_key: options.apiKey,
             api_secret: options.apiSecret,
         })
+    }
+
+    public async getAccountBalances() {
+        const weight = weights[this.market].getAccountInfo
+        const result = await this.call(weight, async () => this.restClient.getAccountInformation())
+
+        const balances = result.assets.filter(({ walletBalance }) => toMathType(walletBalance).gt(0)).map(
+            ({ asset, walletBalance }) => <const>[asset, toPrice(walletBalance)]
+        )
+
+        return Object.fromEntries(balances)
     }
 
     public override async watchPairs() {

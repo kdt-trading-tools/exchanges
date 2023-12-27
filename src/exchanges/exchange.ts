@@ -48,6 +48,8 @@ export abstract class Exchange extends TypedEventEmitter<ExchangeEvents> {
 
     public abstract getTradingFees(): Promise<Record<string, TradingFee>>
 
+    public abstract getAccountBalances(): Promise<Record<string, PriceType>>
+
     public abstract watchCandles(symbol: string, timeframe: Timeframe): Promise<() => Promise<void>>
 
     public abstract watchCandlesBatch(params: Array<readonly [string, Timeframe]>): Promise<() => Promise<void>>

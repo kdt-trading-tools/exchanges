@@ -6,6 +6,7 @@ import { BinanceExchange } from '../exchange'
 import { Market, defaultIntervals, weights } from '../constants'
 import type { BinanceExchangeOptions } from '../types'
 import type { Precision } from '../../../types'
+import { toMathType, toPrice } from '../../../utils'
 
 export class BinanceSpot extends BinanceExchange {
     public readonly name: string = 'Binance Spot'
@@ -24,6 +25,18 @@ export class BinanceSpot extends BinanceExchange {
             api_key: options.apiKey,
             api_secret: options.apiSecret,
         })
+    }
+
+    public async getAccountBalances() {
+        const weight = weights[this.market].getAccountInfo
+        const result = await this.call(weight, async () => this.restClient.getAccountInformation())
+
+        const balances = result.balances.filter(({ free }) => toMathType(free).gt(0)).map(({ asset, free }) => <const>[
+            asset,
+            toPrice(free),
+        ])
+
+        return Object.fromEntries(balances)
     }
 
     public override async getTradingFee(symbol: string) {
