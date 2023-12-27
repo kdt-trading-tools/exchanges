@@ -14,6 +14,8 @@ export type BinanceSymbol = SymbolExchangeInfo | FuturesSymbolExchangeInfo | Bin
 
 export type BinanceExchangeOptions = ExchangeOptions & {
     websocketClient?: BinanceWebsocketClientOptions
+    apiKey?: string
+    apiSecret?: string
 }
 
 export interface ContractInfoStream {

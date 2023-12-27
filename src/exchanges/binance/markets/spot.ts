@@ -13,11 +13,16 @@ export class BinanceSpot extends BinanceExchange {
     protected readonly restClient: MainClient
     protected readonly supportedIntervals: KlineInterval[] = ['1s', ...defaultIntervals]
 
-    public constructor(options?: BinanceExchangeOptions) {
+    public constructor(options: BinanceExchangeOptions = {}) {
         super(options)
 
         this.market = Market.SPOT
-        this.restClient = new MainClient({ parseExceptions: true })
+
+        this.restClient = new MainClient({
+            parseExceptions: true,
+            api_key: options.apiKey,
+            api_secret: options.apiSecret,
+        })
     }
 
     protected getPrecision({ filters }: SymbolExchangeInfo): Precision {

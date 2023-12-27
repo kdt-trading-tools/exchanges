@@ -12,11 +12,16 @@ export class BinanceUSDM extends BinanceExchange {
     protected readonly restClient: USDMClient
     protected readonly supportedIntervals = defaultIntervals
 
-    public constructor(options?: BinanceExchangeOptions) {
+    public constructor(options: BinanceExchangeOptions = {}) {
         super(options)
 
         this.market = Market.USDM
-        this.restClient = new USDMClient({ parseExceptions: true })
+
+        this.restClient = new USDMClient({
+            parseExceptions: true,
+            api_key: options.apiKey,
+            api_secret: options.apiSecret,
+        })
     }
 
     public override async watchPairs() {

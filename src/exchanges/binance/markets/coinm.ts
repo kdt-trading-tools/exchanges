@@ -11,11 +11,16 @@ export class BinanceCoinM extends BinanceExchange {
     protected readonly restClient: CoinMClient
     protected readonly supportedIntervals = defaultIntervals
 
-    public constructor(options?: BinanceExchangeOptions) {
+    public constructor(options: BinanceExchangeOptions = {}) {
         super(options)
 
         this.market = Market.COINM
-        this.restClient = new CoinMClient({ parseExceptions: true })
+
+        this.restClient = new CoinMClient({
+            parseExceptions: true,
+            api_key: options.apiKey,
+            api_secret: options.apiSecret,
+        })
     }
 
     protected getPrecision({ pricePrecision, quantityPrecision }: BinanceCoinMSymbol): Precision {
