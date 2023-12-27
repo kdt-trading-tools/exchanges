@@ -1,6 +1,6 @@
 import { TypedEventEmitter } from '@khangdt22/utils/event'
 import { Limiter, type LimiterEvents, consoleLogger, type Timeframe, type TimeframeStr } from '../utils'
-import type { Logger, Pair, Candle, PriceType } from '../types'
+import type { Logger, Pair, Candle, PriceType, TradingFee } from '../types'
 
 export type ExchangeEvents = {
     'candle': (symbol: string, timeframe: TimeframeStr, candle: Candle, isClose: boolean) => void
@@ -43,6 +43,10 @@ export abstract class Exchange extends TypedEventEmitter<ExchangeEvents> {
     public abstract getCandles(symbol: string, timeframe: Timeframe, options?: GetCandlesOptions): Promise<Candle[]>
 
     public abstract getBidAsk(symbols?: string | string[]): Promise<Record<string, [bid: PriceType, ask: PriceType]>>
+
+    public abstract getTradingFee(symbol: string): Promise<TradingFee>
+
+    public abstract getTradingFees(): Promise<Record<string, TradingFee>>
 
     public abstract watchCandles(symbol: string, timeframe: Timeframe): Promise<() => Promise<void>>
 

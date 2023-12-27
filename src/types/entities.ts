@@ -24,3 +24,8 @@ export interface Pair {
     quote: string
     precision: Precision
 }
+
+export interface TradingFee {
+    maker: number
+    taker: number
+}

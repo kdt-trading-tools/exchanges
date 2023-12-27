@@ -1,8 +1,9 @@
 import type { SymbolExchangeInfo, SymbolPriceFilter, SymbolLotSizeFilter, KlineInterval } from 'binance'
 import { MainClient } from 'binance'
 import { rtrim } from '@khangdt22/utils/string'
+import { bignumber } from 'mathjs'
 import { BinanceExchange } from '../exchange'
-import { Market, defaultIntervals } from '../constants'
+import { Market, defaultIntervals, weights } from '../constants'
 import type { BinanceExchangeOptions } from '../types'
 import type { Precision } from '../../../types'
 
@@ -23,6 +24,27 @@ export class BinanceSpot extends BinanceExchange {
             api_key: options.apiKey,
             api_secret: options.apiSecret,
         })
+    }
+
+    public override async getTradingFee(symbol: string) {
+        return this.getTradingFees(symbol).then((fees) => fees[symbol])
+    }
+
+    public override async getTradingFees(symbol?: string) {
+        const weight = weights[this.market].getTradingFees
+        const params = symbol ? { symbol } : undefined
+
+        const result = await this.call(weight, async () => this.restClient.getTradeFee(params)).then((fees) => (
+            fees.map(({ symbol, makerCommission, takerCommission }) => <const>[
+                symbol,
+                {
+                    maker: bignumber(makerCommission).mul(100).toNumber(),
+                    taker: bignumber(takerCommission).mul(100).toNumber(),
+                },
+            ])
+        ))
+
+        return Object.fromEntries(result)
     }
 
     protected getPrecision({ filters }: SymbolExchangeInfo): Precision {

@@ -4,7 +4,7 @@ import { isKlineRaw, type KlineInterval, type SymbolOrderBookTicker } from 'bina
 import { wrap } from '@khangdt22/utils/array'
 import { isNullish } from '@khangdt22/utils/condition'
 import { Exchange, type GetCandlesOptions } from '../exchange'
-import type { Pair, Precision, PriceType } from '../../types'
+import type { Pair, Precision, PriceType, TradingFee } from '../../types'
 import { type Timeframe, toPrice, toTimeframeStr } from '../../utils'
 import type { Market } from './constants'
 import { weights, getCandlesLimits } from './constants'
@@ -78,6 +78,14 @@ export abstract class BinanceExchange extends Exchange {
         }
 
         return this.getBidAskMultipleSymbols(symbols)
+    }
+
+    public async getTradingFee(symbol: string): Promise<TradingFee> {
+        throw new Error(`Not supported (symbol: ${symbol})`)
+    }
+
+    public async getTradingFees(): Promise<Record<string, TradingFee>> {
+        throw new Error('Not supported')
     }
 
     public async watchCandles(symbol: string, timeframe: Timeframe) {
