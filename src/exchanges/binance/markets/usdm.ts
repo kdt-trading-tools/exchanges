@@ -3,7 +3,7 @@ import { USDMClient } from 'binance'
 import { BinanceExchange } from '../exchange'
 import { Market, defaultIntervals, weights } from '../constants'
 import type { BinanceExchangeOptions } from '../types'
-import type { Precision } from '../../../types'
+import type { Precision, OrderResponse } from '../../../types'
 import { toMathType, toPrice } from '../../../utils'
 
 export class BinanceUSDM extends BinanceExchange {
@@ -23,6 +23,14 @@ export class BinanceUSDM extends BinanceExchange {
             api_key: options.apiKey,
             api_secret: options.apiSecret,
         })
+    }
+
+    public async createTestOrder() {
+        throw new Error('Not supported')
+    }
+
+    public async createOrder(): Promise<OrderResponse> {
+        throw new Error('Not supported')
     }
 
     public async getAccountBalances() {

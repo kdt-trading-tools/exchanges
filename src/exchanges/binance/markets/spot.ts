@@ -1,12 +1,13 @@
-import type { SymbolExchangeInfo, SymbolPriceFilter, SymbolLotSizeFilter, KlineInterval } from 'binance'
+import type { SymbolExchangeInfo, SymbolPriceFilter, SymbolLotSizeFilter, KlineInterval, OrderResponseResult } from 'binance'
 import { MainClient } from 'binance'
 import { rtrim } from '@khangdt22/utils/string'
 import { bignumber } from 'mathjs'
 import { BinanceExchange } from '../exchange'
 import { Market, defaultIntervals, weights } from '../constants'
 import type { BinanceExchangeOptions } from '../types'
-import type { Precision } from '../../../types'
+import type { Precision, Order } from '../../../types'
 import { toMathType, toPrice } from '../../../utils'
+import { toSpotOrder, formatSpotOrderResponse } from '../utils'
 
 export class BinanceSpot extends BinanceExchange {
     public readonly name: string = 'Binance Spot'
@@ -25,6 +26,20 @@ export class BinanceSpot extends BinanceExchange {
             api_key: options.apiKey,
             api_secret: options.apiSecret,
         })
+    }
+
+    public async createTestOrder(order: Order) {
+        await this.call(
+            weights[this.market].createTestOrder,
+            async () => this.restClient.testNewOrder(toSpotOrder(order))
+        )
+    }
+
+    public async createOrder(order: Order) {
+        const weight = weights[this.market].createOrder
+        const result = await this.call(weight, async () => this.restClient.submitNewOrder(toSpotOrder(order)))
+
+        return formatSpotOrderResponse(result as OrderResponseResult)
     }
 
     public async getAccountBalances() {

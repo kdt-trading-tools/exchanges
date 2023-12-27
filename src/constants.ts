@@ -1,3 +1,28 @@
+export enum OrderType {
+    LIMIT = 'LIMIT',
+    MARKET = 'MARKET',
+    STOP_LOSS = 'STOP_LOSS',
+    STOP_LOSS_LIMIT = 'STOP_LOSS_LIMIT',
+    TAKE_PROFIT = 'TAKE_PROFIT',
+    TAKE_PROFIT_LIMIT = 'TAKE_PROFIT_LIMIT',
+    LIMIT_MAKER = 'LIMIT_MAKER',
+}
+
+export enum OrderSide {
+    BUY = 'BUY',
+    SELL = 'SELL',
+}
+
+export enum OrderStatus {
+    NEW = 'NEW',
+    PARTIALLY_FILLED = 'PARTIALLY_FILLED',
+    FILLED = 'FILLED',
+    CANCELED = 'CANCELED',
+    PENDING_CANCEL = 'PENDING_CANCEL',
+    REJECTED = 'REJECTED',
+    EXPIRED = 'EXPIRED',
+}
+
 export enum TimeframeEnum {
     MIN1 = '1m',
     MIN3 = '3m',
