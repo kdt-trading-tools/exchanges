@@ -1,6 +1,7 @@
 import { TypedEventEmitter } from '@khangdt22/utils/event'
 import { Limiter, type LimiterEvents, consoleLogger, type Timeframe, type TimeframeStr } from '../utils'
 import type { Logger, Pair, Candle, PriceType, TradingFee, Order, OrderResponse } from '../types'
+import type { OrderStatus } from '../constants'
 
 export type ExchangeEvents = {
     'candle': (symbol: string, timeframe: TimeframeStr, candle: Candle, isClose: boolean) => void
@@ -37,6 +38,8 @@ export abstract class Exchange extends TypedEventEmitter<ExchangeEvents> {
     public abstract createTestOrder(order: Order): Promise<void>
 
     public abstract createOrder(order: Order): Promise<OrderResponse>
+
+    public abstract cancelOrder(symbol: string, orderId: string): Promise<OrderStatus>
 
     public abstract getTimezone(): Promise<string>
 

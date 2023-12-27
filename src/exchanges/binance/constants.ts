@@ -28,6 +28,7 @@ export const weights: Record<Market, Record<string, number>> = {
         getAccountInfo: 20,
         createTestOrder: 1,
         createOrder: 1,
+        cancelOrder: 1,
     },
     [Market.USDM]: {
         exchangeInfo: 1,

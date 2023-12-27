@@ -5,6 +5,7 @@ import { Market, defaultIntervals, weights } from '../constants'
 import type { BinanceExchangeOptions } from '../types'
 import type { Precision, OrderResponse } from '../../../types'
 import { toMathType, toPrice } from '../../../utils'
+import type { OrderStatus } from '../../../constants'
 
 export class BinanceUSDM extends BinanceExchange {
     public readonly name: string = 'Binance USDM Futures'
@@ -30,6 +31,10 @@ export class BinanceUSDM extends BinanceExchange {
     }
 
     public async createOrder(): Promise<OrderResponse> {
+        throw new Error('Not supported')
+    }
+
+    public async cancelOrder(): Promise<OrderStatus> {
         throw new Error('Not supported')
     }
 
