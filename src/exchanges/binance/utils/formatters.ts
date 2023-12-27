@@ -37,6 +37,7 @@ export const toSpotOrder = (order: Order): NewSpotOrderParams => ({
     side: order.side,
     quantity: Number(order.quantity),
     newOrderRespType: 'RESULT',
+    timeInForce: 'GTC',
     ...(isKeyOf(order, 'price') ? { price: order['price'] } : {}),
     ...(isKeyOf(order, 'stopPrice') ? { stopPrice: order['stopPrice'] } : {}),
 })
