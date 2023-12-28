@@ -44,4 +44,7 @@ export interface OrderUpdateStream {
     r: string
     i: number
     T: number
+    n: string
+    z: string
+    Z: string
 }

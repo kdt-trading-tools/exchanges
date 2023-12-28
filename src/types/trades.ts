@@ -40,7 +40,10 @@ export type OrderUpdate = OrderResponse & {
     side: OrderSide
     type: OrderType
     quantity: QuantityType
+    filledQuantity: QuantityType
+    quoteQuantity: QuantityType
     price: PriceType
     stopPrice: PriceType
+    fee: PriceType
     error: string
 }

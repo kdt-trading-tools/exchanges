@@ -16,6 +16,9 @@ export const formatWsOrderUpdate = (data: OrderUpdateStream): OrderUpdate => ({
     timestamp: data.T,
     status: formatOrderStatus(data.X),
     error: data.r,
+    fee: toPrice(data.n),
+    filledQuantity: toQuantity(data.z),
+    quoteQuantity: toQuantity(data.Z),
 })
 
 export const formatSpotOrderResponse = (response: OrderResponseResult): OrderResponse => ({
