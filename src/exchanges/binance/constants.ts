@@ -55,3 +55,15 @@ export const weights: Record<Market, Record<string, number>> = {
         getAccountInfo: 5,
     },
 }
+
+export const testnetApiUrls: Record<Market, string | undefined> = {
+    [Market.SPOT]: 'https://testnet.binance.vision',
+    [Market.USDM]: undefined,
+    [Market.COINM]: undefined,
+}
+
+export const testnetWsUrls: Record<Market, string | undefined> = {
+    [Market.SPOT]: 'wss://testnet.binance.vision/stream',
+    [Market.USDM]: undefined,
+    [Market.COINM]: undefined,
+}

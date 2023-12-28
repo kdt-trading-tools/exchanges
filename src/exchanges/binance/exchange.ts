@@ -17,6 +17,7 @@ export abstract class BinanceExchange extends Exchange {
     protected abstract readonly restClient: BinanceRestClient
     protected abstract readonly supportedIntervals: KlineInterval[]
 
+    protected websocketEndpoint?: string
     protected exchangeInfo?: BinanceExchangeInfo
     protected exchangeInfoPromise?: Promise<BinanceExchangeInfo>
     protected pairs: Record<string, Pair> = {}
@@ -286,7 +287,9 @@ export abstract class BinanceExchange extends Exchange {
     }
 
     protected createWebsocketClient() {
-        const client = new BinanceWebsocketClient(this.market, this.options.websocketClient)
+        const client = new BinanceWebsocketClient(this.market, {
+            endpoint: this.websocketEndpoint, ...this.options.websocketClient,
+        })
 
         client.on('connect', (id, { client }) => this.logger.debug(`Connecting to websocket server ${client.address} using id ${id}`))
         client.on('connected', (id) => this.logger.debug(`Connected to websocket server ${id}`))

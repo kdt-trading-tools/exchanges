@@ -3,25 +3,33 @@ import { MainClient } from 'binance'
 import { rtrim } from '@khangdt22/utils/string'
 import { bignumber } from 'mathjs'
 import { BinanceExchange } from '../exchange'
-import { Market, defaultIntervals, weights } from '../constants'
+import { Market, defaultIntervals, weights, testnetApiUrls, testnetWsUrls } from '../constants'
 import type { BinanceExchangeOptions } from '../types'
 import type { Precision, Order } from '../../../types'
 import { toMathType, toPrice } from '../../../utils'
 import { toSpotOrder, formatSpotOrderResponse, formatOrderStatus, formatSpotOrder } from '../utils'
 
+export interface BinanceSpotOptions extends BinanceExchangeOptions {
+    testnet?: boolean
+}
+
 export class BinanceSpot extends BinanceExchange {
     public readonly name: string = 'Binance Spot'
+    public readonly testnet: boolean
 
     protected readonly market: Market
     protected readonly restClient: MainClient
     protected readonly supportedIntervals: KlineInterval[] = ['1s', ...defaultIntervals]
 
-    public constructor(options: BinanceExchangeOptions = {}) {
+    public constructor(options: BinanceSpotOptions = {}) {
         super(options)
 
         this.market = Market.SPOT
+        this.testnet = options.testnet ?? false
+        this.websocketEndpoint = this.testnet ? testnetWsUrls[this.market] : undefined
 
         this.restClient = new MainClient({
+            baseUrl: this.testnet ? testnetApiUrls[this.market] : undefined,
             parseExceptions: true,
             api_key: options.apiKey,
             api_secret: options.apiSecret,
@@ -95,6 +103,10 @@ export class BinanceSpot extends BinanceExchange {
     }
 
     public override async getTradingFees(symbol?: string) {
+        if (this.testnet) {
+            return symbol ? { [symbol]: { maker: 0, taker: 0 } } : this.getTestnetFees()
+        }
+
         const weight = weights[this.market].getTradingFees
         const params = symbol ? { symbol } : undefined
 
@@ -136,5 +148,11 @@ export class BinanceSpot extends BinanceExchange {
 
     protected countFractionDigits(value: number | string) {
         return rtrim(value.toString(), '0').split('.')[1]?.length ?? 0
+    }
+
+    protected async getTestnetFees() {
+        return this.getPairs().then(
+            (pairs) => Object.fromEntries(pairs.map(({ symbol }) => <const>[symbol, { maker: 0, taker: 0 }]))
+        )
     }
 }
