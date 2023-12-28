@@ -97,13 +97,17 @@ export const formatOrderStatus = (status: OrderStatusType | 'EXPIRED_IN_MATCH'):
     }
 }
 
+export function isRequireTimeInForce(type: OrderType) {
+    return type === OrderType.LIMIT || type === OrderType.STOP_LOSS_LIMIT || type === OrderType.TAKE_PROFIT_LIMIT
+}
+
 export const toSpotOrder = (order: Order): NewSpotOrderParams => ({
     symbol: order.symbol,
     type: order.type,
     side: order.side,
     quantity: Number(order.quantity),
     newOrderRespType: 'RESULT',
-    timeInForce: 'GTC',
+    ...(isRequireTimeInForce(order.type) ? { timeInForce: 'GTC' } : {}),
     ...(isKeyOf(order, 'price') ? { price: order['price'] } : {}),
     ...(isKeyOf(order, 'stopPrice') ? { stopPrice: order['stopPrice'] } : {}),
 })
