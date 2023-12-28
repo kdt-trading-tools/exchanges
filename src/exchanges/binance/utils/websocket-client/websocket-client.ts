@@ -21,7 +21,7 @@ export class BinanceWebsocketClient extends TypedEventEmitter<BinanceWebsocketCl
     public constructor(public readonly market: Market, protected readonly options: BinanceWebsocketClientOptions = {}) {
         super()
 
-        this.endpoint = endpoints[market]
+        this.endpoint = options.endpoint ?? endpoints[market]
         this.requestTimeout = options.requestTimeout ?? 10_000
         this.maxSubscribePerTime = options.maxSubscribePerTime ?? 200
     }

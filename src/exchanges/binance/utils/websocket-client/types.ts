@@ -2,6 +2,7 @@ import type { WebsocketClient, WebsocketClientOptions } from '@khangdt22/utils/w
 import type { createDeferred } from '@khangdt22/utils/promise'
 
 export type BinanceWebsocketClientOptions = Omit<WebsocketClientOptions, 'autoConnect'> & {
+    endpoint?: string
     maxSubscribePerTime?: number
 }
 
