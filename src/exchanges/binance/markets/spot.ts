@@ -7,7 +7,7 @@ import { Market, defaultIntervals, weights } from '../constants'
 import type { BinanceExchangeOptions } from '../types'
 import type { Precision, Order } from '../../../types'
 import { toMathType, toPrice } from '../../../utils'
-import { toSpotOrder, formatSpotOrderResponse, formatOrderStatus } from '../utils'
+import { toSpotOrder, formatSpotOrderResponse, formatOrderStatus, formatSpotOrder } from '../utils'
 
 export class BinanceSpot extends BinanceExchange {
     public readonly name: string = 'Binance Spot'
@@ -47,6 +47,17 @@ export class BinanceSpot extends BinanceExchange {
             weights[this.market].createTestOrder,
             async () => this.restClient.testNewOrder(toSpotOrder(order))
         )
+    }
+
+    public async getOrder(symbol: string, orderId: string) {
+        const weight = weights[this.market].getOrder
+
+        const result = await this.call(weight, async () => this.restClient.getOrder({
+            symbol,
+            orderId: Number(orderId),
+        }))
+
+        return formatSpotOrder(result)
     }
 
     public async createOrder(order: Order) {

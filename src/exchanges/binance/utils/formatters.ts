@@ -1,9 +1,25 @@
-import type { Kline, WsMessageKlineRaw, NewSpotOrderParams, OrderResponseResult, OrderStatus as OrderStatusType } from 'binance'
+import type { Kline, WsMessageKlineRaw, NewSpotOrderParams, OrderResponseResult, OrderStatus as OrderStatusType, SpotOrder } from 'binance'
 import { isKeyOf } from '@khangdt22/utils/object'
 import type { Candle, Order, OrderResponse, OrderUpdate } from '../../../types'
 import { toPrice, toQuantity } from '../../../utils'
 import { OrderStatus, OrderSide, OrderType } from '../../../constants'
 import type { OrderUpdateStream } from '../types'
+
+export const formatSpotOrder = (data: SpotOrder): OrderUpdate => ({
+    symbol: data.symbol,
+    side: formatOrderSide(data.side),
+    type: formatOrderType(data.type),
+    quantity: toQuantity(data.origQty),
+    price: toPrice(data.price),
+    stopPrice: toPrice(data.stopPrice),
+    orderId: data.orderId.toString(),
+    timestamp: data.time,
+    status: formatOrderStatus(data.status),
+    error: 'NONE',
+    fee: toPrice(0),
+    filledQuantity: toQuantity(data.executedQty),
+    quoteQuantity: toQuantity(data.cummulativeQuoteQty),
+})
 
 export const formatWsOrderUpdate = (data: OrderUpdateStream): OrderUpdate => ({
     symbol: data.s,

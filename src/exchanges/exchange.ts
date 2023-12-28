@@ -42,6 +42,8 @@ export abstract class Exchange extends TypedEventEmitter<ExchangeEvents> {
 
     public abstract createOrder(order: Order): Promise<OrderResponse>
 
+    public abstract getOrder(symbol: string, orderId: string): Promise<OrderUpdate>
+
     public abstract cancelOrder(symbol: string, orderId: string): Promise<OrderStatus>
 
     public abstract getTimezone(): Promise<string>
