@@ -56,7 +56,7 @@ export const formatOrderSide = (side: string): OrderSide => {
     }
 }
 
-export const formatOrderStatus = (status: OrderStatusType): OrderStatus => {
+export const formatOrderStatus = (status: OrderStatusType | 'EXPIRED_IN_MATCH'): OrderStatus => {
     switch (status) {
         case 'NEW':
             return OrderStatus.NEW
@@ -71,6 +71,7 @@ export const formatOrderStatus = (status: OrderStatusType): OrderStatus => {
         case 'REJECTED':
             return OrderStatus.REJECTED
         case 'EXPIRED':
+        case 'EXPIRED_IN_MATCH':
             return OrderStatus.EXPIRED
         default:
             throw new Error(`Unknown order status: ${status}`)
